@@ -89,7 +89,7 @@
           </div>
 
           <div class="group-title">效果命令（{{ detail.effect_commands.length }} 条）</div>
-          <div v-for="(ec, i) in detail.effect_commands" :key="i" class="cmd">
+          <div v-for="(ec, i) in shownCommands" :key="i" class="cmd">
             <div class="cmd-head">
               <span class="cmd-idx mono">#{{ i }}</span>
               <EnumSelect meta-name="effect-types" :model-value="ec.type" style="width: 200px" @change="(v) => onTypeChange(i, v)" />
@@ -97,12 +97,12 @@
               <span class="cmd-del" @click="removeCmd(i)" title="删除命令">✕</span>
             </div>
             <div class="cmd-params">
-              <Field v-for="p in paramsFor(ec.type)" :key="p.key" :label="p.label">
+              <Field v-for="p in ec.params || []" :key="p.key" :label="p.label">
                 <EnumSelect v-if="p.type === 'unit'" :preloaded="unitItems" :model-value="ec[p.key]" @change="(v) => saveCmd(i, p.key, v)" />
                 <EnumSelect v-else-if="p.type === 'tech'" :preloaded="techItems" :model-value="ec[p.key]" @change="(v) => saveCmd(i, p.key, v)" />
                 <EnumSelect v-else-if="p.type === 'armor'" meta-name="armors" :model-value="ec[p.key]" @change="(v) => saveCmd(i, p.key, v)" />
                 <EnumSelect v-else-if="p.type === 'attribute'" meta-name="effect-attributes" :model-value="ec[p.key]" @change="(v) => saveCmd(i, p.key, v)" />
-                <EnumSelect v-else-if="p.type === 'resource'" meta-name="resource-types" :model-value="ec[p.key]" @change="(v) => saveCmd(i, p.key, v)" />
+                <EnumSelect v-else-if="p.type === 'resource'" meta-name="civ-resources" :model-value="ec[p.key]" @change="(v) => saveCmd(i, p.key, v)" />
                 <FieldControl v-else type="number" :model-value="ec[p.key]" @commit="(v) => saveCmd(i, p.key, v)" />
               </Field>
             </div>
@@ -124,7 +124,7 @@
 </template>
 
 <script setup lang="ts">
-import { onMounted, ref, watch } from 'vue'
+import { computed, onMounted, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { ElMessage } from 'element-plus'
 import { useAppStore, useHistoryStore, getEntityKey } from '../stores'
@@ -200,70 +200,44 @@ async function fetch() {
 }
 
 async function loadRefs() {
-  const [tn, un]: any[] = await Promise.all([api.techNames(), api.units(0, undefined)])
+  const [tn, un]: any[] = await Promise.all([api.techNames(), api.units(0, undefined, 1, 5000)])
   techItems.value = tn.items.map((x: any) => ({ value: x.id, label: x.name }))
   unitItems.value = (un.items || []).map((x: any) => ({ value: x.unit_id, label: x.display_name || x.name }))
+}
+
+// 命令多的效果（科技树可达近 200 条）一次性渲染会卡住切换：先渲染一批，其余逐帧追加
+const CMD_BATCH = 30
+const shownCount = ref(Infinity)
+let renderToken = 0
+const shownCommands = computed(() => (detail.value?.effect_commands || []).slice(0, shownCount.value))
+
+function renderCommandsProgressively() {
+  const token = ++renderToken
+  shownCount.value = CMD_BATCH
+  const step = () => {
+    if (token !== renderToken) return
+    const total = detail.value?.effect_commands?.length || 0
+    if (shownCount.value + CMD_BATCH >= total) {
+      shownCount.value = Infinity
+      return
+    }
+    shownCount.value += CMD_BATCH
+    requestAnimationFrame(step)
+  }
+  requestAnimationFrame(step)
 }
 
 async function selectById(id: number) {
   currentId.value = id
   const d = await api.effectDetail(id)
   registerDetailBaseline(d)
+  renderCommandsProgressively()
   detail.value = d
 }
 
 async function onSelect(row: any) {
   if (!row) return
   await selectById(row.id)
-}
-
-function paramsFor(type: number): { key: string; label: string; type: string }[] {
-  if (type === 101) {
-    return [
-      { key: 'a', label: 'Tech', type: 'tech' },
-      { key: 'b', label: 'Resource', type: 'resource' },
-      { key: 'c', label: '0设/1改', type: 'number' },
-      { key: 'd', label: 'Amount', type: 'number' },
-    ]
-  }
-  if (type === 102) {
-    return [
-      { key: 'a', label: 'Tech', type: 'tech' },
-      { key: 'b', label: '0/1', type: 'number' },
-      { key: 'c', label: '0', type: 'number' },
-      { key: 'd', label: '0', type: 'number' },
-    ]
-  }
-  if (type === 103) {
-    return [
-      { key: 'a', label: 'Tech', type: 'tech' },
-      { key: 'b', label: '0/1', type: 'number' },
-      { key: 'c', label: '0', type: 'number' },
-      { key: 'd', label: '0', type: 'number' },
-    ]
-  }
-  if (type === 1 || type === 11 || type === 21) {
-    return [
-      { key: 'a', label: 'Unit', type: 'unit' },
-      { key: 'b', label: 'Class', type: 'armor' },
-      { key: 'c', label: 'Attribute', type: 'attribute' },
-      { key: 'd', label: 'Amount', type: 'number' },
-    ]
-  }
-  if (type === 4 || type === 5) {
-    return [
-      { key: 'a', label: 'Resource', type: 'resource' },
-      { key: 'b', label: '0设/1改', type: 'number' },
-      { key: 'c', label: 'Amount', type: 'number' },
-      { key: 'd', label: '0', type: 'number' },
-    ]
-  }
-  return [
-    { key: 'a', label: 'A', type: 'number' },
-    { key: 'b', label: 'B', type: 'number' },
-    { key: 'c', label: 'C', type: 'number' },
-    { key: 'd', label: 'D', type: 'number' },
-  ]
 }
 
 async function save(field: string, value: unknown) {
@@ -284,12 +258,12 @@ function saveCmd(i: number, key: string, value: unknown) {
   save(`effect_commands.${i}.${key}`, value)
 }
 
-function onTypeChange(i: number, v: number) {
-  saveCmd(i, 'type', v)
-  detail.value = {
-    ...detail.value,
-    effect_commands: detail.value.effect_commands.map((c: any, idx: number) => (idx === i ? { ...c, type: v } : c)),
-  }
+// 参数定义（params）与描述随命令类型变化，由后端给出，改类型后重新拉取
+async function onTypeChange(i: number, v: number) {
+  if (!detail.value) return
+  const id = detail.value.id
+  await save(`effect_commands.${i}.type`, v)
+  if (detail.value?.id === id) detail.value = await api.effectDetail(id)
 }
 
 async function addCmd() {
