@@ -113,12 +113,12 @@
 ### 19. ✅ 返回键适配（低优先级）
 - App.vue 监听鼠标侧键（button 3 后退 / 4 前进）+ 键盘 Ctrl+Alt+←/→ 前进后退。
 
-### 20. ⏳ 对比页（DiffView 工具页）重构 —— 方案已出，待实施
+### 20. ✅ 对比页（DiffView 工具页）重构（2026-10-08）
 - **问题**：工具→对比仍只支持选基准+目标 dat；对比形式差；变更记录无 id；无跳转/详情应用；展开内容不可读。
-- **方案**：详见 [`对比页重构方案.md`](对比页重构方案.md)。核心：
-  1. 基准固定为当前 dat（内存，不重复 parse）；
-  2. 目标改为「选版本」为主、「选文件」为辅（`POST /api/diff/against-version`）；
-  3. 变更记录带 id；
-  4. 每条记录「跳转」到数据页定位修改 + 「详情」子弹窗（EntityCompareDialog 并排对比 + 应用，类 IDEA）；
-  5. 展开内容字段中文 + 枚举名称可读化（复用 `compare/fields.ts` 与 meta 枚举）。
-- **实施顺序**：① `core/diff.py` 加 `diff_current` + 记录补 id → ② `api/diff.py` 加 against-version → ③ DiffView 顶部选版本 + 记录表 id/跳转/详情列 → ④ 抽 EntityCompareDialog（CompareView 改 props 指定版本）→ ⑤ 展开可读化。
+- **实现**：
+  1. 基准固定当前 dat：`core/diff.py` 抽 `_diff_objects` + 新增 `diff_current`（基准用内存 `dat_core.get()`，不重复 parse）；
+  2. 目标选版本为主：`POST /api/diff/against-version`（选文件作高级选项折叠）；
+  3. 变更记录带 id（added/removed 补 `id`，modified 保留 `id_a`/`id_b`）；
+  4. 每条记录「跳转」到数据页定位 + 「详情」子弹窗（el-dialog + iframe 内嵌 `/compare/:table/:id` 并排对比画面，可应用）；
+  5. 展开内容字段中文（复用 `compare/fields.ts` FIELDS 映射）+ 值可读化。
+- 方案详见 [`对比页重构方案.md`](对比页重构方案.md)。
