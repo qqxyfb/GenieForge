@@ -8,10 +8,37 @@ from pathlib import Path
 
 from fastapi import APIRouter, HTTPException
 
+from ..config import config as app_config
+from ..core.names import name_resolver
+from ..core.refs import ref_index
+from ..core.unit_index import unit_index
 from ..core.version import KIND_IMPORTED, version_store
 from ..deps import dat_core
 
 router = APIRouter(prefix="/version", tags=["version"])
+
+
+def _build_indexes() -> None:
+    """构建引用索引 + 主单位索引（加载 dat 后调用，失败不影响主流程）。"""
+    try:
+        ref_index.build()
+        unit_index.build()
+    except Exception:  # noqa: BLE001
+        pass
+
+
+def _try_load_language() -> int:
+    """加载配置的语言文件（与 /dat/load 一致），返回条目数。"""
+    lang_file = app_config.get("language_file")
+    if not lang_file:
+        return 0
+    path = Path(lang_file)
+    if not path.exists():
+        return 0
+    try:
+        return name_resolver.load_language_file(str(path))
+    except Exception:  # noqa: BLE001
+        return 0
 
 
 @router.get("/list")
@@ -41,7 +68,10 @@ def checkout(body: dict):
             info = dat_core.load_version(snap, work)
         except Exception as exc:  # noqa: BLE001
             raise HTTPException(400, f"加载失败: {exc}") from exc
-        return {"status": "ok", "version": rec, "info": info}
+        # 加载后补引用索引 + 语言表（与 /dat/load 一致）
+        _build_indexes()
+        lang_count = _try_load_language()
+        return {"status": "ok", "version": rec, "info": info, "language_entries": lang_count}
 
     # 已加载：走 load_snapshot（需保存才写回原 dat）
     if dat_core.dirty and not body.get("force"):
@@ -50,7 +80,8 @@ def checkout(body: dict):
         info = dat_core.load_snapshot(snap)
     except Exception as exc:  # noqa: BLE001
         raise HTTPException(400, f"回滚失败: {exc}") from exc
-    return {"status": "ok", "version": rec, "info": info}
+    lang_count = _try_load_language()
+    return {"status": "ok", "version": rec, "info": info, "language_entries": lang_count}
 
 
 @router.post("/import")

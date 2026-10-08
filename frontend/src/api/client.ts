@@ -100,6 +100,8 @@ export const api = {
     request('/api/diff', { method: 'POST', body: JSON.stringify({ base, target }) }),
   diffAgainstVersion: (versionId: number) =>
     request('/api/diff/against-version', { method: 'POST', body: JSON.stringify({ version_id: versionId }) }),
+  diffApplyRecord: (table: string, change: string, id: number, changes?: unknown[]) =>
+    request('/api/diff/apply-record', { method: 'POST', body: JSON.stringify({ table, change, id, changes }) }),
   patchApply: (patch: string, overrides?: Record<number, number[]>, skip?: number[]) =>
     request('/api/patch/apply', { method: 'POST', body: JSON.stringify({ patch, overrides, skip }) }),
   patchGenerateFromVersion: (versionId: number) =>

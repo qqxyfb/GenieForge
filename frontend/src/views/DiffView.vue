@@ -103,8 +103,16 @@
             </el-tag>
           </template>
         </el-table-column>
-        <el-table-column label="操作" width="150" fixed="right">
+        <el-table-column label="操作" width="220" fixed="right">
           <template #default="{ row }">
+            <el-button
+              v-if="row.change === 'added' || row.change === 'removed'"
+              size="small"
+              type="primary"
+              @click="applyRecord(row)"
+            >
+              应用
+            </el-button>
             <el-button size="small" @click="jump(row)">跳转</el-button>
             <el-button size="small" @click="openDetail(row)">详情</el-button>
           </template>
@@ -210,7 +218,12 @@ async function runAgainstVersion() {
   if (versionId.value == null) return ElMessage.warning('请先选择对比版本')
   loading.value = true
   try {
-    diffState.report = await api.diffAgainstVersion(versionId.value)
+    // 并行：算 diff 报告 + 预加载目标版本到 diff_loader，之后点「详情」秒开
+    const [, report] = await Promise.all([
+      compare.selectVersion(versionId.value).catch(() => {}),
+      api.diffAgainstVersion(versionId.value)
+    ])
+    diffState.report = report
   } catch (e: any) {
     ElMessage.error(e.message)
   } finally {
@@ -282,6 +295,29 @@ async function openDetail(row: any) {
   detailTargetId.value = targetId
   detailTitle.value = `${tableLabel(table)} #${id} · ${row.name || ''}`
   detailVisible.value = true
+}
+
+// 一键应用新增/删除记录：把当前 dat 该 id 位置对齐目标版本
+async function applyRecord(row: any) {
+  try {
+    await ElMessageBox.confirm(
+      `应用「${tableLabel(row.table)} #${row.id}」的${changeLabel(row.change)}？`,
+      '确认',
+      { type: 'warning' }
+    )
+  } catch {
+    return
+  }
+  try {
+    await api.diffApplyRecord(row.table, row.change, row.id, row.changes)
+    ElMessage.success('已应用')
+    // 应用后重新对比，刷新变更记录
+    if (versionId.value != null) {
+      diffState.report = await api.diffAgainstVersion(versionId.value)
+    }
+  } catch (e: any) {
+    ElMessage.error(e.message)
+  }
 }
 
 async function generatePatch() {

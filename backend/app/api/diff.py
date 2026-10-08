@@ -1,12 +1,16 @@
 """三级 diff 对比 + 目标 dat 实体查询（原页面右侧弹窗对比）。"""
 
+import copy
+
 from fastapi import APIRouter, HTTPException
 
 from ... import metadata
 from ..core import diff as diff_engine
+from ..core.dat_core import dat_core
 from ..core.diff_loader import diff_loader
 from ..core.subtable import rows_to_dicts
 from ..core.version import version_store
+from ..deps import require_dat
 from ..schemas import DiffRequest
 
 router = APIRouter(prefix="/diff", tags=["diff"])
@@ -32,6 +36,85 @@ def diff_against_version(body: dict):
     except Exception as exc:  # noqa: BLE001
         raise HTTPException(400, f"对比失败: {exc}") from exc
     return {**report, "version": rec}
+
+
+def _overwrite_from_target(d, target, table: str, eid: int) -> None:
+    """把目标版本 table[eid] 的实体整体深拷贝覆盖到当前 dat 的 table[eid]（可撤销）。
+
+    用于 added / removed 记录的一键应用（同 id 位置覆盖，让当前 dat 对齐目标版本）。
+    """
+    if table == "techs":
+        src_obj, dst_obj = target.techs[eid], d.techs[eid]
+    elif table == "effects":
+        src_obj, dst_obj = target.effects[eid], d.effects[eid]
+    elif table == "civs":
+        src_obj, dst_obj = target.civs[eid], d.civs[eid]
+    elif table == "unit_headers":
+        src_obj, dst_obj = target.unit_headers[eid], d.unit_headers[eid]
+    else:
+        raise HTTPException(400, f"未知表: {table}")
+
+    fields = [k for k in getattr(type(dst_obj), "__slots__", []) if not k.startswith("__")]
+    old = {k: copy.deepcopy(getattr(dst_obj, k)) for k in fields}
+    new = {k: copy.deepcopy(getattr(src_obj, k)) for k in fields}
+    for k in fields:
+        setattr(dst_obj, k, new[k])
+
+    def undo():
+        for k, v in old.items():
+            setattr(dst_obj, k, v)
+
+    def redo():
+        for k, v in new.items():
+            setattr(dst_obj, k, v)
+
+    dat_core.push_command(f"应用 {table}[{eid}]", undo, redo)
+
+
+@router.post("/apply-record")
+def apply_diff_record(body: dict):
+    """一键应用一条变更记录。body: {table, change, id}
+
+    - added：目标版本有、当前无 → 用目标版本同 id 实体覆盖当前（补齐新内容）；
+    - removed：当前有、目标无 → 用目标版本同 id 实体覆盖当前（还原/清掉）；
+    - modified：逐字段应用（body 需带 changes）。
+    """
+    d = require_dat().get()
+    try:
+        target = diff_loader.get()
+    except RuntimeError as exc:
+        raise HTTPException(400, "请先选择对比版本") from exc
+    table = body.get("table")
+    change = body.get("change")
+    eid = body.get("id")
+    if not isinstance(eid, int):
+        raise HTTPException(400, "缺少 id")
+
+    if change in ("added", "removed"):
+        try:
+            _overwrite_from_target(d, target, table, eid)
+        except (IndexError, HTTPException) as exc:
+            raise HTTPException(400, f"应用失败: {exc}") from exc
+        return {"status": "ok", "table": table, "id": eid}
+
+    if change == "modified":
+        changes = body.get("changes")
+        if not isinstance(changes, list):
+            raise HTTPException(400, "modified 需带 changes")
+        # 逐字段应用：从目标版本读该字段新值写回当前 dat
+        for ch in changes:
+            field = ch.get("field")
+            value = ch.get("new")
+            if field is None:
+                continue
+            dat_core.edit_field(
+                getattr(d, table)[eid], field, value,
+                f"{table}[{eid}].{field}",
+                meta={"table": table, "id": eid, "field": field},
+            )
+        return {"status": "ok", "table": table, "id": eid}
+
+    raise HTTPException(400, f"未知变化类型: {change}")
 
 
 @router.get("/{job_id}")
