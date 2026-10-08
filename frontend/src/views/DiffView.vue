@@ -121,7 +121,7 @@
 <script setup lang="ts">
 import { computed, onMounted, ref } from 'vue'
 import { useRouter } from 'vue-router'
-import { ElMessage } from 'element-plus'
+import { ElMessage, ElMessageBox } from 'element-plus'
 import { api } from '../api/client'
 import FilePicker from '../components/FilePicker.vue'
 import { useCompare, versionLabel } from '../composables/useCompare'
@@ -245,7 +245,20 @@ async function openDetail(row: any) {
 }
 
 async function generatePatch() {
-  ElMessage.info('补丁导出需先选定基准/目标文件，暂不支持按版本导出')
+  if (versionId.value == null) return ElMessage.warning('请先选择对比版本')
+  try {
+    const r: any = await api.patchGenerateFromVersion(versionId.value)
+    const name = await ElMessageBox.prompt('输入补丁名称（保存到 patches 目录）', '导出补丁', {
+      inputValue: `v${versionId.value}-diff`,
+      inputPattern: /^[\w\-]+$/,
+      inputErrorMessage: '名称只能包含字母数字下划线横线',
+    }).then((x) => x.value).catch(() => null)
+    if (name === null) return
+    await api.patchSave(name, r.patch)
+    ElMessage.success(`补丁已保存（${r.summary.modified} 处修改），可在「补丁」页应用`)
+  } catch (e: any) {
+    ElMessage.error(e.message)
+  }
 }
 
 onMounted(loadVersions)

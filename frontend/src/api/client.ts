@@ -102,6 +102,8 @@ export const api = {
     request('/api/diff/against-version', { method: 'POST', body: JSON.stringify({ version_id: versionId }) }),
   patchApply: (patch: string, overrides?: Record<number, number[]>, skip?: number[]) =>
     request('/api/patch/apply', { method: 'POST', body: JSON.stringify({ patch, overrides, skip }) }),
+  patchGenerateFromVersion: (versionId: number) =>
+    request('/api/patch/generate-from-version', { method: 'POST', body: JSON.stringify({ version_id: versionId }) }),
   patchPreview: (patch: string, overrides?: Record<number, number[]>, skip?: number[]) =>
     request('/api/patch/preview', { method: 'POST', body: JSON.stringify({ patch, overrides, skip }) }),
   patchList: () => request('/api/patch/list'),

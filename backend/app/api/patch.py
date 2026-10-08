@@ -92,6 +92,30 @@ def generate_patch(body: PatchGenerateRequest):
     }
 
 
+@router.post("/generate-from-version")
+def generate_patch_from_version(body: dict):
+    """以当前 dat 为基准、版本快照为目标，生成语义补丁。body: {version_id}"""
+    from ..core.version import version_store
+
+    version_id = body.get("version_id")
+    rec = version_store.get(version_id) if isinstance(version_id, int) else None
+    if rec is None:
+        raise HTTPException(404, "版本不存在")
+    snap = version_store.snapshot_path(version_id)
+    if snap is None or not snap.exists():
+        raise HTTPException(404, "版本快照文件缺失")
+    try:
+        report = diff_engine.diff_current(str(snap))
+    except Exception as exc:  # noqa: BLE001
+        raise HTTPException(400, f"对比失败: {exc}") from exc
+    patch_text = patch_engine.generate_from_diff(report)
+    return {
+        "version": rec,
+        "summary": report["summary"],
+        "patch": patch_text,
+    }
+
+
 def _build_tech_signature(d, tech_id: int, entity_changes: list[dict]):
     """构造科技签名作为兜底匹配；把条目所有相关改动的 old 叠加回当前对象。"""
     try:
