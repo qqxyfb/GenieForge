@@ -111,9 +111,14 @@
         </el-table-column>
       </el-table>
     </el-card>
-    <!-- 差异详情子弹窗（类 IDEA：内嵌数据页并排对比画面） -->
-    <el-dialog v-model="detailVisible" :title="detailTitle" width="92%" top="4vh" destroy-on-close>
-      <iframe v-if="detailUrl" :src="detailUrl" class="detail-frame" />
+    <!-- 差异详情子弹窗：内嵌 EntityCompare，与数据页「对比…」画面一致 -->
+    <el-dialog v-model="detailVisible" :title="detailTitle" width="94%" top="3vh" destroy-on-close>
+      <EntityCompare
+        v-if="detailVisible && detailTable && detailId != null"
+        :table="detailTable"
+        :entity-id="detailId"
+        :civ="0"
+      />
     </el-dialog>
   </div>
 </template>
@@ -124,24 +129,36 @@ import { useRouter } from 'vue-router'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { api } from '../api/client'
 import FilePicker from '../components/FilePicker.vue'
+import EntityCompare from '../components/EntityCompare.vue'
 import { useCompare, versionLabel } from '../composables/useCompare'
+import { useDiffState } from '../composables/useDiffState'
 import { FIELDS, TABLE_LABELS, TABLE_ROUTES } from '../compare/fields'
 
 const router = useRouter()
 const compare = useCompare()
+const { state: diffState } = useDiffState()
 
 const versions = ref<any[]>([])
-const versionId = ref<number | null>(null)
-const targetFile = ref('')
-const report = ref<any>(null)
 const loading = ref(false)
 const advOpen = ref<string[]>([])
 
+// 报告 / 版本 / 目标文件用 module 级状态（跳转数据页返回后不丢失）
+const report = computed(() => diffState.report)
+const versionId = computed<number | null>({
+  get: () => diffState.versionId,
+  set: (v) => { diffState.versionId = v }
+})
+const targetFile = computed({
+  get: () => diffState.targetFile,
+  set: (v) => { diffState.targetFile = v }
+})
+
 const records = computed(() => report.value?.records ?? [])
 
-// 差异详情子弹窗
+// 差异详情子弹窗（改用 EntityCompare 组件，不再用 iframe）
 const detailVisible = ref(false)
-const detailUrl = ref('')
+const detailTable = ref('')
+const detailId = ref<number | null>(null)
 const detailTitle = ref('')
 
 function tableLabel(t: string | number): string {
@@ -189,7 +206,7 @@ async function runAgainstVersion() {
   if (versionId.value == null) return ElMessage.warning('请先选择对比版本')
   loading.value = true
   try {
-    report.value = await api.diffAgainstVersion(versionId.value)
+    diffState.report = await api.diffAgainstVersion(versionId.value)
   } catch (e: any) {
     ElMessage.error(e.message)
   } finally {
@@ -201,7 +218,7 @@ async function runAgainstFile() {
   if (!targetFile.value) return ElMessage.warning('请选择目标 dat 文件')
   loading.value = true
   try {
-    report.value = await api.diff(await currentBasePath(), targetFile.value)
+    diffState.report = await api.diff(await currentBasePath(), targetFile.value)
   } catch (e: any) {
     ElMessage.error(e.message)
   } finally {
@@ -227,7 +244,7 @@ function jump(row: any) {
   router.push({ path: route, query })
 }
 
-// 打开详情子弹窗：内嵌该实体的并排对比画面（类 IDEA）
+// 打开详情子弹窗：内嵌 EntityCompare 组件（与数据页「对比…」画面一致）
 async function openDetail(row: any) {
   const table = row.table
   const id = row.change === 'modified' ? row.id_a : row.id
@@ -238,9 +255,9 @@ async function openDetail(row: any) {
   } catch {
     /* 无版本时子弹窗内可自行选版本 */
   }
-  const query = table === 'units' ? '?civ=0' : ''
+  detailTable.value = table
+  detailId.value = id
   detailTitle.value = `${tableLabel(table)} #${id} · ${row.name || ''}`
-  detailUrl.value = `/compare/${table}/${id}${query}`
   detailVisible.value = true
 }
 
@@ -282,5 +299,4 @@ onMounted(loadVersions)
 .new-val { color: #8ae0a8; }
 .muted { color: var(--muted); }
 .mono { font-family: var(--f-mono); }
-.detail-frame { width: 100%; height: 72vh; border: none; border-radius: 4px; }
 </style>
