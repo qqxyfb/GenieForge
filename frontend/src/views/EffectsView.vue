@@ -50,11 +50,13 @@
         <div class="list-foot">
           <el-pagination
             v-model:current-page="page"
-            :page-size="pageSize"
+            v-model:page-size="pageSize"
+            :page-sizes="[20, 50, 100, 200, 500]"
             :total="total"
-            layout="prev, pager, next"
+            layout="prev, pager, next, sizes"
             size="small"
             @current-change="fetch"
+            @size-change="onPageSizeChange"
           />
         </div>
       </div>
@@ -88,15 +90,29 @@
             </Field>
           </div>
 
-          <div class="group-title">效果命令（{{ detail.effect_commands.length }} 条）</div>
-          <div v-for="(ec, i) in shownCommands" :key="i" class="cmd">
+          <div class="group-title">
+            <span>效果命令（{{ detail.effect_commands.length }} 条）</span>
+            <span class="cmd-toolbar">
+              <el-button v-if="selectedCmds.length" size="small" @click="copySelected">复制选中({{ selectedCmds.length }})</el-button>
+              <el-button v-if="selectedCmds.length" size="small" type="danger" @click="removeSelected">删除选中</el-button>
+              <el-button v-if="cmdClipboard.length" size="small" @click="pasteCmds">粘贴({{ cmdClipboard.length }})</el-button>
+              <el-button size="small" @click="addCmd">+ 添加命令</el-button>
+            </span>
+          </div>
+          <div v-for="(ec, i) in shownCommands" :key="i" class="cmd" :class="{ selected: selectedCmds.includes(i) }">
             <div class="cmd-head">
+              <el-checkbox :model-value="selectedCmds.includes(i)" size="small" @change="(v: any) => toggleSelect(i, v)" />
               <span class="cmd-idx mono">#{{ i }}</span>
-              <EnumSelect meta-name="effect-types" :model-value="ec.type" style="width: 200px" @change="(v) => onTypeChange(i, v)" />
+              <EnumSelect meta-name="effect-types" :model-value="ec.type" style="width: 180px" @change="(v) => onTypeChange(i, v)" />
               <span class="cmd-desc">{{ ec.description }}</span>
-              <span class="cmd-del" @click="removeCmd(i)" title="删除命令">✕</span>
+              <span class="cmd-op" :class="{ disabled: i === 0 }" title="上移" @click="moveCmd(i, -1)">↑</span>
+              <span class="cmd-op" :class="{ disabled: i === shownCommands.length - 1 }" title="下移" @click="moveCmd(i, 1)">↓</span>
+              <span class="cmd-op" title="插入到其后" @click="insertCmd(i)">＋</span>
+              <span class="cmd-op" title="折叠/展开" @click="toggleCollapse(i)">{{ collapsedCmds.includes(i) ? '▸' : '▾' }}</span>
+              <span class="cmd-op" title="复制此命令" @click="copyCmd(i)">⧉</span>
+              <span class="cmd-del" title="删除命令" @click="removeCmd(i)">✕</span>
             </div>
-            <div class="cmd-params">
+            <div class="cmd-params" v-show="!collapsedCmds.includes(i)">
               <Field v-for="p in ec.params || []" :key="p.key" :label="p.label">
                 <EnumSelect v-if="p.type === 'unit'" :preloaded="unitItems" :model-value="ec[p.key]" @change="(v) => saveCmd(i, p.key, v)" />
                 <EnumSelect v-else-if="p.type === 'tech'" :preloaded="techItems" :model-value="ec[p.key]" @change="(v) => saveCmd(i, p.key, v)" />
@@ -107,7 +123,6 @@
               </Field>
             </div>
           </div>
-          <el-button size="small" style="margin-top: 8px" @click="addCmd">+ 添加命令</el-button>
         </div>
       </div>
       <div class="main-panel empty-panel" v-else>
@@ -146,7 +161,7 @@ const patchDialogVisible = ref(false)
 const rows = ref<any[]>([])
 const total = ref(0)
 const page = ref(1)
-const pageSize = 50
+const pageSize = ref(50)
 const q = ref('')
 const detail = ref<any>(null)
 const currentId = ref(-1)
@@ -155,6 +170,11 @@ const techItems = ref<{ value: number; label: string }[]>([])
 // 条件搜索：命令数区间
 const minCmds = ref('')
 const maxCmds = ref('')
+
+// 命令级剪贴板（模块级，跨效果共享）+ 多选/折叠状态
+const cmdClipboard = ref<any[]>([])
+const selectedCmds = ref<number[]>([])
+const collapsedCmds = ref<number[]>([])
 
 function openCompare() {
   if (!detail.value) return
@@ -189,8 +209,13 @@ function registerDetailBaseline(data: any) {
   historyStore.syncEntity(key, data)
 }
 
+function onPageSizeChange() {
+  page.value = 1
+  fetch()
+}
+
 async function fetch() {
-  const params: Record<string, string | number> = { page: page.value, page_size: pageSize }
+  const params: Record<string, string | number> = { page: page.value, page_size: pageSize.value }
   if (q.value) params.q = q.value
   if (minCmds.value !== '') params.min_cmds = Number(minCmds.value)
   if (maxCmds.value !== '') params.max_cmds = Number(maxCmds.value)
@@ -273,6 +298,62 @@ async function addCmd() {
 
 async function removeCmd(i: number) {
   await saveTable(detail.value.effect_commands.filter((_: unknown, idx: number) => idx !== i))
+}
+
+// ---- 命令级复制 / 粘贴 / 排序 / 折叠 ----
+function toggleSelect(i: number, v: boolean) {
+  if (v) selectedCmds.value = [...selectedCmds.value, i]
+  else selectedCmds.value = selectedCmds.value.filter((x) => x !== i)
+}
+
+function toggleCollapse(i: number) {
+  collapsedCmds.value = collapsedCmds.value.includes(i)
+    ? collapsedCmds.value.filter((x) => x !== i)
+    : [...collapsedCmds.value, i]
+}
+
+function copyCmd(i: number) {
+  const ec = detail.value?.effect_commands?.[i]
+  if (!ec) return
+  cmdClipboard.value = [JSON.parse(JSON.stringify(ec))]
+  ElMessage.success('已复制命令 #' + i)
+}
+
+function copySelected() {
+  if (!selectedCmds.value.length) return
+  const cmds = selectedCmds.value
+    .map((i) => detail.value?.effect_commands?.[i])
+    .filter(Boolean)
+  if (!cmds.length) return
+  cmdClipboard.value = cmds.map((c: any) => JSON.parse(JSON.stringify(c)))
+  ElMessage.success(`已复制 ${cmdClipboard.value.length} 条命令`)
+}
+
+async function pasteCmds() {
+  if (!detail.value || !cmdClipboard.value.length) return
+  const rows = [...detail.value.effect_commands, ...cmdClipboard.value.map((c: any) => JSON.parse(JSON.stringify(c)))]
+  await saveTable(rows)
+}
+
+async function removeSelected() {
+  if (!selectedCmds.value.length) return
+  const rows = detail.value.effect_commands.filter((_: unknown, i: number) => !selectedCmds.value.includes(i))
+  selectedCmds.value = []
+  await saveTable(rows)
+}
+
+async function moveCmd(i: number, delta: number) {
+  const cmds = [...detail.value.effect_commands]
+  const j = i + delta
+  if (j < 0 || j >= cmds.length) return
+  ;[cmds[i], cmds[j]] = [cmds[j], cmds[i]]
+  await saveTable(cmds)
+}
+
+async function insertCmd(i: number) {
+  const cmds = [...detail.value.effect_commands]
+  cmds.splice(i + 1, 0, { type: 4, a: -1, b: -1, c: 0, d: 0 })
+  await saveTable(cmds)
 }
 
 async function saveTable(rowsData: unknown[]) {
@@ -457,20 +538,29 @@ onMounted(async () => {
 }
 
 .group-title {
-  color: var(--muted);
-  font-weight: 600;
+  color: #e6a84a;
+  font-weight: 700;
   font-size: 12px;
-  letter-spacing: 0.08em;
+  letter-spacing: 0.06em;
   text-transform: uppercase;
-  border-top: 1px solid var(--line);
+  border-left: 3px solid var(--gold);
+  background: linear-gradient(90deg, rgba(224, 164, 58, 0.12), rgba(224, 164, 58, 0));
+  padding: 5px 10px;
   margin: 18px 0 10px;
-  padding-top: 10px;
+  border-radius: 2px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.cmd-toolbar {
+  display: flex;
+  gap: 6px;
+  align-items: center;
 }
 
 .group-title:first-child {
-  border-top: none;
   margin-top: 0;
-  padding-top: 0;
 }
 
 .grid1 {
@@ -515,6 +605,30 @@ onMounted(async () => {
 
 .cmd-del:hover {
   color: var(--red);
+}
+
+.cmd-op {
+  color: var(--muted);
+  cursor: pointer;
+  padding: 2px 4px;
+  font-size: 12px;
+  border-radius: 3px;
+  flex-shrink: 0;
+  user-select: none;
+}
+
+.cmd-op:hover {
+  color: var(--fg);
+  background: #252931;
+}
+
+.cmd-op.disabled {
+  opacity: 0.35;
+  cursor: default;
+}
+
+.cmd.selected {
+  border-color: var(--gold);
 }
 
 .cmd-params {

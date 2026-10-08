@@ -65,7 +65,8 @@ const originalDisplay = computed(() => {
 
 .field-label {
   font-size: 11px;
-  color: var(--muted);
+  color: #7d8590;
+  letter-spacing: 0.02em;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;

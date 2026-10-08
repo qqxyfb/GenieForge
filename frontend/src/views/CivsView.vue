@@ -160,7 +160,7 @@
       </div>
 
       <!-- 右栏：关联面板（宽 260px） -->
-      <RelationPanel table="civs" :entity-id="detail?.id ?? null" />
+      <RelationPanel table="civs" :entity-id="detail?.id ?? null" hide-forward />
     </div>
 
     <!-- 改动转为补丁对话框 -->
@@ -226,19 +226,17 @@ function registerDetailBaseline(data: any) {
   const key = getEntityKey('civs', data.id)
   historyStore.recordBaseline(key, data, ['name', 'player_type', 'icon_set', 'tech_tree_id', 'team_bonus_id'])
   if (Array.isArray(data.resources)) {
-    data.resources.forEach((val: unknown, i: number) => {
-      historyStore.ensureFieldBaseline(key, `resources.${i}`, val)
+    data.resources.forEach((res: any, i: number) => {
+      const v = res && typeof res === 'object' ? res.value : res
+      historyStore.ensureFieldBaseline(key, `resources.${i}`, v)
     })
   }
   historyStore.syncEntity(key, data)
 }
 const filteredResources = computed(() => {
-  if (!detail.value || !detail.value.resources) return []
-  return detail.value.resources.map((val: number, i: number) => ({
-    index: i,
-    name: `资源 #${i}`,
-    value: val,
-  }))
+  if (!detail.value || !Array.isArray(detail.value.resources)) return []
+  // 后端已返回 {index, value, name} 对象数组，直接使用
+  return detail.value.resources
 })
 
 // 条件搜索（文明仅 46 条，客户端过滤）
@@ -281,7 +279,9 @@ async function onSelect(row: any) {
 function setDetail(field: string, value: unknown) {
   if (field.startsWith('resources.')) {
     const idx = parseInt(field.split('.')[1], 10)
-    detail.value.resources[idx] = value
+    if (detail.value.resources[idx] && typeof detail.value.resources[idx] === 'object') {
+      detail.value.resources[idx].value = value
+    }
     return
   }
   detail.value[field] = value
@@ -468,20 +468,20 @@ onMounted(async () => {
 }
 
 .group-title {
-  color: var(--muted);
-  font-weight: 600;
+  color: #e6a84a;
+  font-weight: 700;
   font-size: 12px;
-  letter-spacing: 0.08em;
+  letter-spacing: 0.06em;
   text-transform: uppercase;
-  border-top: 1px solid var(--line);
+  border-left: 3px solid var(--gold);
+  background: linear-gradient(90deg, rgba(224, 164, 58, 0.12), rgba(224, 164, 58, 0));
+  padding: 5px 10px;
   margin: 18px 0 10px;
-  padding-top: 10px;
+  border-radius: 2px;
 }
 
 .group-title:first-child {
-  border-top: none;
   margin-top: 0;
-  padding-top: 0;
 }
 
 .grid4 {

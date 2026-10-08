@@ -77,11 +77,13 @@
         <div class="list-foot">
           <el-pagination
             v-model:current-page="page"
-            :page-size="pageSize"
+            v-model:page-size="pageSize"
+            :page-sizes="[20, 50, 100, 200, 500]"
             :total="total"
-            layout="prev, pager, next"
+            layout="prev, pager, next, sizes"
             size="small"
             @current-change="fetch"
+            @size-change="onPageSizeChange"
           />
         </div>
       </div>
@@ -422,7 +424,7 @@
       </div>
 
       <!-- 右栏：关联面板（宽 260px，单位表对应 unit_headers） -->
-      <RelationPanel table="unit_headers" :entity-id="currentUnit >= 0 ? currentUnit : null" />
+      <RelationPanel table="unit_headers" :entity-id="currentUnit >= 0 ? currentUnit : null" :hide-reverse-tables="['civs']" />
     </div>
 
     <!-- 改动转为补丁对话框 -->
@@ -456,7 +458,7 @@ const civs = ref<{ id: number; name: string; display_name?: string }[]>([])
 const rows = ref<any[]>([])
 const total = ref(0)
 const page = ref(1)
-const pageSize = 50
+const pageSize = ref(50)
 const q = ref('')
 const dim1 = ref('name')
 const dim2 = ref('none')
@@ -610,12 +612,17 @@ async function switchCiv(c: number) {
   }
 }
 
+function onPageSizeChange() {
+  page.value = 1
+  fetch()
+}
+
 async function fetch() {
   const r: any = await api.units(
     civ.value,
     q.value || undefined,
     page.value,
-    pageSize,
+    pageSize.value,
     filterDim.value || undefined,
     filterDim.value ? filterValue.value : undefined
   )
@@ -988,20 +995,20 @@ onMounted(async () => {
 }
 
 .group-title {
-  color: var(--muted);
-  font-weight: 600;
+  color: #e6a84a;
+  font-weight: 700;
   font-size: 12px;
-  letter-spacing: 0.08em;
+  letter-spacing: 0.06em;
   text-transform: uppercase;
-  border-top: 1px solid var(--line);
+  border-left: 3px solid var(--gold);
+  background: linear-gradient(90deg, rgba(224, 164, 58, 0.12), rgba(224, 164, 58, 0));
+  padding: 5px 10px;
   margin: 18px 0 10px;
-  padding-top: 10px;
+  border-radius: 2px;
 }
 
 .group-title:first-child {
-  border-top: none;
   margin-top: 0;
-  padding-top: 0;
 }
 
 .grid4 {

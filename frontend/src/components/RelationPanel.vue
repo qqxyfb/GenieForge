@@ -2,7 +2,7 @@
   <aside class="side-panel" aria-label="关联面板">
     <div class="panel-inner">
       <!-- 引用了 -->
-      <section class="section">
+      <section v-if="!hideForward" class="section">
         <h4 class="section-title">引用了 ({{ forwardRefs.length }})</h4>
         <div v-if="loading" class="empty-hint">加载中…</div>
         <div v-else-if="forwardRefs.length === 0" class="empty-hint">无</div>
@@ -27,12 +27,12 @@
 
       <!-- 被引用 -->
       <section class="section">
-        <h4 class="section-title">被引用 ({{ reverseRefs.length }})</h4>
+        <h4 class="section-title">被引用 ({{ filteredReverseRefs.length }})</h4>
         <div v-if="loading" class="empty-hint">加载中…</div>
-        <div v-else-if="reverseRefs.length === 0" class="empty-hint">无</div>
+        <div v-else-if="filteredReverseRefs.length === 0" class="empty-hint">无</div>
         <div v-else class="ref-list">
           <div
-            v-for="(refItem, idx) in reverseRefs"
+            v-for="(refItem, idx) in filteredReverseRefs"
             :key="`rev-${idx}`"
             class="ref-row"
             @click="navigateTo(refItem)"
@@ -93,7 +93,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, watch } from 'vue'
+import { computed, ref, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import { useAppStore } from '../stores'
 import { api } from '../api/client'
@@ -123,6 +123,10 @@ export interface ChangeItem {
 const props = defineProps<{
   table: 'techs' | 'unit_headers' | 'civs' | 'effects' | string
   entityId: number | null | undefined
+  /** 隐藏「引用了」面板（如文明页：601 项资源引用无信息量） */
+  hideForward?: boolean
+  /** 从「被引用」面板过滤掉的表（如单位页：去掉「关联文明」噪音） */
+  hideReverseTables?: string[]
 }>()
 
 const router = useRouter()
@@ -133,6 +137,12 @@ const changesLoading = ref(false)
 const forwardRefs = ref<RefItem[]>([])
 const reverseRefs = ref<RefItem[]>([])
 const loading = ref(false)
+
+const filteredReverseRefs = computed(() => {
+  const hide = props.hideReverseTables || []
+  if (hide.length === 0) return reverseRefs.value
+  return reverseRefs.value.filter((r) => !hide.includes(r.table))
+})
 
 const TABLE_MAP: Record<string, string> = {
   techs: '科技',

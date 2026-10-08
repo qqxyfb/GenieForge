@@ -57,11 +57,13 @@
         <div class="list-foot">
           <el-pagination
             v-model:current-page="page"
-            :page-size="pageSize"
+            v-model:page-size="pageSize"
+            :page-sizes="[20, 50, 100, 200, 500]"
             :total="total"
-            layout="prev, pager, next"
+            layout="prev, pager, next, sizes"
             size="small"
             @current-change="fetch"
+            @size-change="onPageSizeChange"
           />
         </div>
       </div>
@@ -265,7 +267,7 @@ const patchDialogVisible = ref(false)
 const rows = ref<any[]>([])
 const total = ref(0)
 const page = ref(1)
-const pageSize = 50
+const pageSize = ref(50)
 const q = ref('')
 const detail = ref<any>(null)
 const currentId = ref(-1)
@@ -357,8 +359,13 @@ function registerDetailBaseline(data: any) {
   historyStore.syncEntity(key, data)
 }
 
+function onPageSizeChange() {
+  page.value = 1
+  fetch()
+}
+
 async function fetch() {
-  const params: Record<string, string | number> = { page: page.value, page_size: pageSize }
+  const params: Record<string, string | number> = { page: page.value, page_size: pageSize.value }
   if (q.value) params.q = q.value
   if (dim.value && dimValue.value !== '') {
     params.field = dim.value
@@ -616,20 +623,20 @@ onMounted(async () => {
 }
 
 .group-title {
-  color: var(--muted);
-  font-weight: 600;
+  color: #e6a84a;
+  font-weight: 700;
   font-size: 12px;
-  letter-spacing: 0.08em;
+  letter-spacing: 0.06em;
   text-transform: uppercase;
-  border-top: 1px solid var(--line);
+  border-left: 3px solid var(--gold);
+  background: linear-gradient(90deg, rgba(224, 164, 58, 0.12), rgba(224, 164, 58, 0));
+  padding: 5px 10px;
   margin: 18px 0 10px;
-  padding-top: 10px;
+  border-radius: 2px;
 }
 
 .group-title:first-child {
-  border-top: none;
   margin-top: 0;
-  padding-top: 0;
 }
 
 .grid4 {
