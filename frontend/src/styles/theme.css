@@ -110,3 +110,37 @@ body,
 ::-webkit-scrollbar-track {
   background: transparent;
 }
+
+/* 分页栏在窄侧栏（260px）内紧凑显示：缩小每页数量下拉、控制分页条不溢出 */
+.el-pagination {
+  flex-wrap: wrap;
+  justify-content: center;
+}
+.el-pagination__sizes {
+  margin-right: 6px;
+}
+.el-pagination__sizes .el-select {
+  width: 84px !important;
+}
+.el-pagination__sizes .el-select .el-select__wrapper {
+  padding-left: 6px;
+  padding-right: 6px;
+  min-height: 22px;
+}
+.el-pagination .btn-prev,
+.el-pagination .btn-next {
+  min-width: 22px;
+  height: 22px;
+}
+.el-pagination .el-pager li {
+  min-width: 22px;
+  height: 22px;
+  line-height: 22px;
+}
+
+/* 数字字段右对齐 + 等宽字体（AGE 数值编辑风格） */
+.el-input.num-input .el-input__inner {
+  text-align: right;
+  font-family: var(--f-mono);
+  font-variant-numeric: tabular-nums;
+}

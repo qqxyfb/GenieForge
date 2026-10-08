@@ -73,7 +73,7 @@
               :disabled="loading"
               @click="load"
             >
-              {{ loading ? '加载中…' : '加载 dat' }}
+              {{ loading ? '解析中（约需 10-20 秒）…' : '加载 dat' }}
             </button>
             <button
               type="button"
@@ -111,19 +111,20 @@ async function refresh() {
 async function load() {
   if (!datPath.value) return ElMessage.warning('请填写 dat 路径')
   loading.value = true
+  const startedAt = Date.now()
   try {
     const r: any = await api.loadDat(datPath.value)
+    const secs = ((Date.now() - startedAt) / 1000).toFixed(1)
     // dat 重新加载成功后清空前端会话内记录的原值与修改历史
     historyStore.clearAll()
     await appStore.refreshDatInfo()
-    ElMessage.success(`已加载，语言表条目 ${r.language_entries ?? 0}`)
+    ElMessage.success(`已加载（用时 ${secs}s），语言表条目 ${r.language_entries ?? 0}`)
   } catch (e: any) {
     ElMessage.error(e.message)
   } finally {
     loading.value = false
   }
 }
-
 async function checkUpdate() {
   try {
     const r: any = await api.updateCheck()

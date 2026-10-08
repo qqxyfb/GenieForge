@@ -60,7 +60,7 @@
             v-model:page-size="pageSize"
             :page-sizes="[20, 50, 100, 200, 500]"
             :total="total"
-            layout="prev, pager, next, sizes"
+            layout="sizes, prev, pager, next"
             size="small"
             @current-change="fetch"
             @size-change="onPageSizeChange"
@@ -90,33 +90,41 @@
           <div class="grid4">
             <Field
               label="Internal Name"
+              :value="detail.name"
               :modified="isFieldModified('name')"
               :original-value="getOriginalValue('name')"
               @revert="revertField('name')"
+              @commit="(v) => save('name', v)"
             >
               <FieldControl type="text" :model-value="detail.name" @commit="(v) => save('name', v)" />
             </Field>
             <Field
               label="Type"
+              :value="detail.type"
               :modified="isFieldModified('type')"
               :original-value="getOriginalValue('type')"
               @revert="revertField('type')"
+              @commit="(v) => save('type', v)"
             >
               <EnumSelect meta-name="tech-types" :model-value="detail.type" @change="(v) => save('type', v)" />
             </Field>
             <Field
               label="Civilization"
+              :value="detail.civ"
               :modified="isFieldModified('civ')"
               :original-value="getOriginalValue('civ')"
               @revert="revertField('civ')"
+              @commit="(v) => save('civ', v)"
             >
               <EnumSelect :preloaded="civItems" :model-value="detail.civ" @change="(v) => save('civ', v)" />
             </Field>
             <Field
               label="Repeatable"
+              :value="detail.repeatable"
               :modified="isFieldModified('repeatable')"
               :original-value="getOriginalValue('repeatable')"
               @revert="revertField('repeatable')"
+              @commit="(v) => save('repeatable', v)"
             >
               <el-checkbox
                 :model-value="detail.repeatable === 1"

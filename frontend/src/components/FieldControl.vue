@@ -3,6 +3,7 @@
     v-if="type === 'text' || type === 'number'"
     v-model="local"
     size="small"
+    :class="{ 'num-input': type === 'number' }"
     :placeholder="placeholder"
     @blur="commit"
     @keyup.enter="commit"

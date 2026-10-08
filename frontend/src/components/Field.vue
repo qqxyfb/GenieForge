@@ -2,19 +2,35 @@
   <div class="field" :class="{ 'is-modified': modified }">
     <div class="field-header">
       <span class="field-label" :title="label">{{ label }}</span>
-      <div v-if="modified" class="field-diff-indicator">
-        <span class="diff-dot" title="字段已修改"></span>
-        <span class="diff-orig-text" :title="String(originalValue)">
-          原值 <span class="mono diff-orig-val">{{ originalDisplay }}</span>
-        </span>
+      <div class="field-actions">
         <button
+          v-if="hasValue"
           type="button"
-          class="revert-btn"
-          title="还原为原值"
-          @click="$emit('revert')"
-        >
-          还原
-        </button>
+          class="copy-btn"
+          title="复制该字段的值"
+          @click="copyVal"
+        >⧉</button>
+        <button
+          v-if="hasValue && clip.hasValue()"
+          type="button"
+          class="copy-btn"
+          :title="`粘贴剪贴板的值（来自「${clip.getLabel()}」）`"
+          @click="pasteVal"
+        >📋</button>
+        <div v-if="modified" class="field-diff-indicator">
+          <span class="diff-dot" title="字段已修改"></span>
+          <span class="diff-orig-text" :title="String(originalValue)">
+            原值 <span class="mono diff-orig-val">{{ originalDisplay }}</span>
+          </span>
+          <button
+            type="button"
+            class="revert-btn"
+            title="还原为原值"
+            @click="$emit('revert')"
+          >
+            还原
+          </button>
+        </div>
       </div>
     </div>
     <div class="field-control">
@@ -25,16 +41,31 @@
 
 <script setup lang="ts">
 import { computed } from 'vue'
+import { useFieldClipboard } from '../composables/useFieldClipboard'
 
 const props = defineProps<{
   label: string
   modified?: boolean
   originalValue?: unknown
+  /** 当前字段值，提供后显示「复制值」按钮 */
+  value?: unknown
 }>()
 
-defineEmits<{
+const emit = defineEmits<{
   (e: 'revert'): void
+  (e: 'commit', value: unknown): void
 }>()
+
+const clip = useFieldClipboard()
+const hasValue = computed(() => props.value !== undefined && props.value !== null)
+
+function copyVal() {
+  clip.copy(props.value, props.label)
+}
+
+function pasteVal() {
+  emit('commit', clip.getValue())
+}
 
 const originalDisplay = computed(() => {
   if (props.originalValue === undefined || props.originalValue === null) {
@@ -71,6 +102,32 @@ const originalDisplay = computed(() => {
   overflow: hidden;
   text-overflow: ellipsis;
   flex: 1;
+}
+
+.field-actions {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  flex-shrink: 0;
+}
+
+.copy-btn {
+  font: inherit;
+  font-size: 11px;
+  line-height: 1;
+  color: var(--muted);
+  background: transparent;
+  border: 1px solid transparent;
+  border-radius: 3px;
+  padding: 2px 3px;
+  cursor: pointer;
+  height: 18px;
+}
+
+.copy-btn:hover {
+  color: var(--gold);
+  border-color: var(--gold-edge);
+  background: var(--gold-bg);
 }
 
 .field-diff-indicator {

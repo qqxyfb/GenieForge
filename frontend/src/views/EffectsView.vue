@@ -53,7 +53,7 @@
             v-model:page-size="pageSize"
             :page-sizes="[20, 50, 100, 200, 500]"
             :total="total"
-            layout="prev, pager, next, sizes"
+            layout="sizes, prev, pager, next"
             size="small"
             @current-change="fetch"
             @size-change="onPageSizeChange"

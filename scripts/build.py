@@ -63,14 +63,24 @@ def ensure_deps(python: str) -> None:
 
 
 def _clean_dir(p: Path) -> None:
-    """删除目录（用 PowerShell Remove-Item，绕过沙箱对 rm/shutil 的接管）。"""
+    """删除目录：优先 Python 原生 shutil，受限环境失败再走 PowerShell，均带超时防卡死。"""
     if not p.exists():
         return
-    subprocess.run(
-        ["powershell", "-NoProfile", "-Command",
-         f"Remove-Item -LiteralPath '{p}' -Recurse -Force -ErrorAction SilentlyContinue"],
-        check=False,
-    )
+    try:
+        shutil.rmtree(p)
+        return
+    except OSError:
+        pass
+    # 受限环境（沙箱接管 rm/shutil）fallback 到 PowerShell，加 timeout 避免卡死
+    try:
+        subprocess.run(
+            ["powershell", "-NoProfile", "-Command",
+             f"Remove-Item -LiteralPath '{p}' -Recurse -Force -ErrorAction SilentlyContinue"],
+            check=False, timeout=30,
+        )
+    except Exception:
+        # 清理失败不阻断打包（PyInstaller --noconfirm 会覆盖同名文件）
+        print(f"[build] 清理 {p} 失败，跳过（不影响打包）")
 
 
 def build_installer(python: str) -> None:

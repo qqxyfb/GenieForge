@@ -65,6 +65,14 @@ class DatCore:
 
     def load(self, path) -> dict:
         p = Path(path)
+        # 同路径 + 文件未变化 → 复用已解析的内存对象，跳过 parse（避免重复 10s+ 解析）
+        with self._lock:
+            if self._dat is not None and self._path == p:
+                try:
+                    if file_sha256(p) == self._source_hash:
+                        return self.info()
+                except OSError:
+                    pass
         dat = self._parse(p)
         with self._lock:
             self._dat = dat
