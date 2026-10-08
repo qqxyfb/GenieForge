@@ -44,6 +44,8 @@ export function useCompare() {
       state.info = null
       return
     }
+    // 已加载同一版本 → 直接复用，避免重复解析目标 dat（约 12s）
+    if (state.versionId === id && state.loaded) return
     const info: any = await api.diffLoadVersion(id)
     state.versionId = id
     state.loaded = true

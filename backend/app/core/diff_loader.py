@@ -23,6 +23,10 @@ class DiffLoader:
         p = Path(path)
         if not p.exists():
             raise FileNotFoundError(f"目标文件不存在: {path}")
+        # 同一文件已加载过 → 直接复用，避免重复解析（parse 约 12s）
+        with self._lock:
+            if self._dat is not None and self._path == str(p):
+                return self.info()
         dat = DatFile.parse(p)
         with self._lock:
             self._dat = dat

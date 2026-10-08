@@ -8,14 +8,8 @@
       <span class="bar-hint">左：当前 dat，可应用　右：对比版本，只读</span>
     </div>
 
-    <div v-if="!base" class="empty">
+    <div v-if="!base && !isAdded" class="empty">
       <el-empty :description="baseError || '正在加载当前 dat 条目…'" />
-    </div>
-    <div v-else-if="!compare.state.loaded" class="empty">
-      <el-empty description="请先选择对比版本" :image-size="80" />
-    </div>
-    <div v-else-if="targetMissing" class="empty">
-      <el-empty description="该版本中无此条目" :image-size="80" />
     </div>
     <div v-else class="ec-body">
       <!-- 标量字段 -->
@@ -27,8 +21,8 @@
           :data-diff="'s:' + f.key"
         >
           <span class="c-label">{{ f.label }}</span>
-          <span class="c-val" :class="{ old: isScalarDiff(f) }">{{ fmt(base[f.key]) }}</span>
-          <span class="c-val" :class="{ new: isScalarDiff(f) }">{{ fmt(target?.[f.key]) }}</span>
+          <span class="c-val" :class="{ old: isScalarDiff(f) }">{{ fmtBase(f) }}</span>
+          <span class="c-val" :class="{ new: isScalarDiff(f) }">{{ fmtTarget(f) }}</span>
           <span class="c-act">
             <el-button v-if="isScalarDiff(f)" size="small" @click="applyScalar(f)">
               ← 应用
@@ -106,6 +100,10 @@ const props = defineProps<{
   entityId: number
   civ?: number
   onlyDiff?: boolean
+  /** 基准 id；null 表示当前 dat 无此实体（新增场景） */
+  baseId?: number | null
+  /** 目标 id；null 表示目标版本无此实体（删除场景） */
+  targetId?: number | null
 }>()
 
 const appStore = useAppStore()
@@ -289,11 +287,16 @@ function colsStyle(lf: ListField) {
 
 async function loadBase() {
   baseError.value = ''
+  // baseId 为 null 表示「当前 dat 无此实体」（新增场景）
+  if (baseId.value == null) {
+    base.value = null
+    return
+  }
   try {
-    if (table.value === 'techs') base.value = await api.techDetail(entityId.value)
-    else if (table.value === 'effects') base.value = await api.effectDetail(entityId.value)
-    else if (table.value === 'civs') base.value = await api.civDetail(entityId.value)
-    else base.value = await api.unitDetail(civ.value, entityId.value)
+    if (table.value === 'techs') base.value = await api.techDetail(baseId.value)
+    else if (table.value === 'effects') base.value = await api.effectDetail(baseId.value)
+    else if (table.value === 'civs') base.value = await api.civDetail(baseId.value)
+    else base.value = await api.unitDetail(civ.value, baseId.value)
   } catch (e: any) {
     base.value = null
     baseError.value = `当前 dat 条目加载失败：${e.message}`
@@ -303,9 +306,14 @@ async function loadBase() {
 async function loadTarget() {
   target.value = null
   targetMissing.value = false
+  // targetId 为 null 表示「目标版本无此实体」（删除场景）
+  if (targetId.value == null) {
+    targetMissing.value = true
+    return
+  }
   if (!compare.state.loaded) return
   try {
-    target.value = await api.diffEntity(table.value, entityId.value, civ.value)
+    target.value = await api.diffEntity(table.value, targetId.value, civ.value)
   } catch {
     targetMissing.value = true
   }
@@ -327,6 +335,8 @@ async function afterApply(field: string) {
 }
 
 async function applyScalar(f: ScalarField) {
+  if (isAdded.value) return ElMessage.warning('该条目为新增，请到数据页手动添加')
+  if (isRemoved.value) return ElMessage.warning('该条目为删除，请到数据页手动删除')
   if (!target.value) return
   try {
     await patch(f.path || f.key, target.value[f.key])
@@ -337,6 +347,8 @@ async function applyScalar(f: ScalarField) {
 }
 
 async function applyRow(lf: ListField, rd: RowDiff) {
+  if (isAdded.value) return ElMessage.warning('该条目为新增，请到数据页手动添加')
+  if (isRemoved.value) return ElMessage.warning('该条目为删除，请到数据页手动删除')
   if (!target.value) return
   const left = pickRows(base.value, lf)
   let rows: any[]
@@ -378,9 +390,22 @@ async function applyAll() {
 
 const onlyDiff = computed(() => Boolean(props.onlyDiff))
 const entityId = computed(() => props.entityId)
+// 基准/目标 id：baseId 未传时用 entityId，传 null 表示「无此实体」
+const baseId = computed<number | null>(() => (props.baseId !== undefined ? props.baseId : props.entityId))
+const targetId = computed<number | null>(() => (props.targetId !== undefined ? props.targetId : props.entityId))
+const isAdded = computed(() => props.baseId === null)
+const isRemoved = computed(() => props.targetId === null)
+
+function fmtBase(f: ScalarField): string {
+  return base.value ? fmt(base.value[f.key]) : '（无此条目）'
+}
+
+function fmtTarget(f: ScalarField): string {
+  return target.value ? fmt(target.value[f.key]) : '（无此条目）'
+}
 
 watch(
-  () => [props.table, props.entityId, props.civ],
+  () => [props.table, props.entityId, props.civ, props.baseId, props.targetId],
   async () => {
     activeKey.value = ''
     await preloadMetas()

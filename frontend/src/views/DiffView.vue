@@ -117,6 +117,8 @@
         v-if="detailVisible && detailTable && detailId != null"
         :table="detailTable"
         :entity-id="detailId"
+        :base-id="detailBaseId"
+        :target-id="detailTargetId"
         :civ="0"
       />
     </el-dialog>
@@ -159,6 +161,8 @@ const records = computed(() => report.value?.records ?? [])
 const detailVisible = ref(false)
 const detailTable = ref('')
 const detailId = ref<number | null>(null)
+const detailBaseId = ref<number | null>(null)
+const detailTargetId = ref<number | null>(null)
 const detailTitle = ref('')
 
 function tableLabel(t: string | number): string {
@@ -247,7 +251,24 @@ function jump(row: any) {
 // 打开详情子弹窗：内嵌 EntityCompare 组件（与数据页「对比…」画面一致）
 async function openDetail(row: any) {
   const table = row.table
-  const id = row.change === 'modified' ? row.id_a : row.id
+  // 三种变化类型分别指定基准 id 与目标 id：
+  // modified → 左右都有；added → 仅目标（当前无此实体）；removed → 仅基准（版本无此实体）
+  let baseId: number | null
+  let targetId: number | null
+  let id: number | null
+  if (row.change === 'modified') {
+    baseId = row.id_a ?? null
+    targetId = row.id_b ?? null
+    id = baseId
+  } else if (row.change === 'added') {
+    baseId = null
+    targetId = row.id ?? null
+    id = targetId
+  } else {
+    baseId = row.id ?? null
+    targetId = null
+    id = baseId
+  }
   if (id == null) return ElMessage.warning('该记录无 id')
   // 确保对比目标已选为当前版本，让子弹窗内直接出差异
   try {
@@ -257,6 +278,8 @@ async function openDetail(row: any) {
   }
   detailTable.value = table
   detailId.value = id
+  detailBaseId.value = baseId
+  detailTargetId.value = targetId
   detailTitle.value = `${tableLabel(table)} #${id} · ${row.name || ''}`
   detailVisible.value = true
 }
