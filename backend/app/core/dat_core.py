@@ -102,6 +102,22 @@ class DatCore:
             self._redo_stack.clear()
             return self.info()
 
+    def load_version(self, snapshot_path, work_path) -> dict:
+        """从版本快照冷启动加载：内存用快照内容，工作路径指向原 dat（source_path）。
+
+        供「从版本加载」在尚未加载任何 dat 时使用（区别于 load_snapshot 要求已有工作文件）。
+        加载后视为干净状态，保存时写回 work_path 并生成新版本。
+        """
+        dat = self._parse(Path(snapshot_path))
+        with self._lock:
+            self._dat = dat
+            self._path = Path(work_path) if work_path else Path(snapshot_path)
+            self._source_hash = file_sha256(Path(snapshot_path))
+            self._dirty = False
+            self._undo_stack.clear()
+            self._redo_stack.clear()
+            return self.info()
+
     def save(self, path: Optional[str] = None) -> dict:
         from .genieutils_fix import apply
 

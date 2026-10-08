@@ -9,7 +9,7 @@ from pathlib import Path
 from fastapi import APIRouter, HTTPException
 
 from ..core.version import KIND_IMPORTED, version_store
-from ..deps import require_dat
+from ..deps import dat_core
 
 router = APIRouter(prefix="/version", tags=["version"])
 
@@ -21,22 +21,33 @@ def list_versions(project: str | None = None):
 
 @router.post("/checkout")
 def checkout(body: dict):
-    """回滚到某个版本：加载快照内容，工作路径仍是原 dat（需保存才写回）。
+    """回滚 / 从版本加载：加载快照内容。
 
-    ``force: true`` 时允许放弃未保存修改。
+    - 已加载 dat 时：工作路径仍是原 dat（需保存才写回），``force: true`` 允许放弃未保存修改。
+    - 尚未加载 dat（冷启动）时：直接把版本快照作为当前工作内容，工作路径指向版本 source_path。
     """
     version_id = body.get("id")
     rec = version_store.get(version_id) if isinstance(version_id, int) else None
     if rec is None:
         raise HTTPException(404, "版本不存在")
-    core = require_dat()  # 未加载 dat → 409
-    if core.dirty and not body.get("force"):
-        raise HTTPException(409, "当前有未保存修改，请先保存；或使用 force 强制回滚")
     snap = version_store.snapshot_path(version_id)
     if snap is None or not snap.exists():
         raise HTTPException(404, "版本快照文件缺失")
+
+    # 冷启动：尚未加载任何 dat，用 load_version（工作路径=source_path）
+    if not dat_core.loaded:
+        work = rec.get("source_path") or str(snap)
+        try:
+            info = dat_core.load_version(snap, work)
+        except Exception as exc:  # noqa: BLE001
+            raise HTTPException(400, f"加载失败: {exc}") from exc
+        return {"status": "ok", "version": rec, "info": info}
+
+    # 已加载：走 load_snapshot（需保存才写回原 dat）
+    if dat_core.dirty and not body.get("force"):
+        raise HTTPException(409, "当前有未保存修改，请先保存；或使用 force 强制回滚")
     try:
-        info = core.load_snapshot(snap)
+        info = dat_core.load_snapshot(snap)
     except Exception as exc:  # noqa: BLE001
         raise HTTPException(400, f"回滚失败: {exc}") from exc
     return {"status": "ok", "version": rec, "info": info}
