@@ -1,23 +1,44 @@
 <template>
-  <div>
-    <h2>对比差异</h2>
-    <el-form label-width="80px" style="max-width: 720px">
-      <el-form-item label="基准 dat">
-        <FilePicker v-model="base" placeholder="旧版 / 官方版 dat 路径" />
-      </el-form-item>
-      <el-form-item label="目标 dat">
-        <FilePicker v-model="target" placeholder="新版 / 我的 mod 版 dat 路径" />
-      </el-form-item>
-      <el-form-item>
-        <el-button type="primary" :loading="loading" @click="run">开始对比</el-button>
-        <el-button :disabled="!report" @click="generatePatch">导出为补丁</el-button>
-      </el-form-item>
-    </el-form>
+  <div class="diff-view">
+    <div class="head">
+      <h2>对比差异</h2>
+      <span class="hint">以当前加载 dat 为基准</span>
+      <el-button v-if="report" size="small" style="margin-left: auto" @click="generatePatch">导出为补丁</el-button>
+    </div>
 
+    <!-- 目标选择：版本为主 -->
+    <div class="target-bar">
+      <span class="lbl">对比版本</span>
+      <el-select
+        v-model="versionId"
+        size="small"
+        filterable
+        placeholder="选择已管理版本"
+        style="width: 300px"
+      >
+        <el-option v-for="v in versions" :key="v.id" :value="v.id" :label="versionLabel(v)" />
+      </el-select>
+      <el-button type="primary" :loading="loading" :disabled="versionId == null" @click="runAgainstVersion">
+        开始对比
+      </el-button>
+    </div>
+
+    <!-- 按文件对比（高级，折叠） -->
+    <el-collapse v-model="advOpen" class="adv">
+      <el-collapse-item name="file" title="按文件对比（高级）">
+        <div class="file-row">
+          <span class="lbl">目标 dat</span>
+          <FilePicker v-model="targetFile" placeholder="目标 dat 文件路径" />
+          <el-button :loading="loading" @click="runAgainstFile">按文件对比</el-button>
+        </div>
+      </el-collapse-item>
+    </el-collapse>
+
+    <!-- 统计 -->
     <el-row v-if="report" :gutter="12" style="margin-bottom: 12px">
       <el-col v-for="(v, k) in report.table" :key="k" :span="6">
         <el-card shadow="hover">
-          <div>{{ k }}</div>
+          <div>{{ tableLabel(k) }}</div>
           <div style="font-size: 20px">
             {{ v.base }} → {{ v.target }}
             <span :style="{ color: v.delta > 0 ? 'red' : v.delta < 0 ? 'green' : 'gray' }">
@@ -28,6 +49,7 @@
       </el-col>
     </el-row>
 
+    <!-- 变更记录 -->
     <el-card v-if="report" shadow="never" style="margin-top: 12px">
       <template #header>
         变更记录
@@ -36,12 +58,13 @@
         <el-tag size="small" type="warning" style="margin-left: 6px">修改 {{ report.summary.modified }}</el-tag>
         <el-tag size="small" type="info" style="margin-left: 6px">ID 漂移 {{ report.summary.id_drift }}</el-tag>
       </template>
-      <el-table :data="records" size="small" border max-height="480">
+      <el-table :data="records" size="small" border max-height="520">
         <el-table-column type="expand">
           <template #default="{ row }">
-            <!-- 三种变化都渲染内容：added 显示新值、removed 显示旧值、modified 逐字段对比 -->
             <el-table v-if="row.change === 'modified'" :data="row.changes" size="small" border>
-              <el-table-column prop="field" label="字段" width="220" />
+              <el-table-column label="字段" width="200">
+                <template #default="{ row: c }"><span class="fld">{{ fieldLabel(row.table, c.field) }}</span></template>
+              </el-table-column>
               <el-table-column label="旧值">
                 <template #default="{ row: c }"><span class="old-val">{{ fmtVal(c.old) }}</span></template>
               </el-table-column>
@@ -50,42 +73,98 @@
               </el-table-column>
             </el-table>
             <div v-else-if="row.change === 'added'" class="expand-block">
-              <div v-for="(v, k) in row.record" :key="k" class="kv"><span class="k">{{ k }}</span><span class="new-val">{{ fmtVal(v) }}</span></div>
+              <div v-for="(v, k) in row.record" :key="k" class="kv">
+                <span class="k">{{ fieldLabel(row.table, k) }}</span>
+                <span class="new-val">{{ fmtVal(v) }}</span>
+              </div>
             </div>
             <div v-else-if="row.change === 'removed'" class="expand-block">
-              <div v-for="(v, k) in row.record" :key="k" class="kv"><span class="k">{{ k }}</span><span class="old-val">{{ fmtVal(v) }}</span></div>
+              <div v-for="(v, k) in row.record" :key="k" class="kv">
+                <span class="k">{{ fieldLabel(row.table, k) }}</span>
+                <span class="old-val">{{ fmtVal(v) }}</span>
+              </div>
             </div>
             <div v-else class="expand-block muted">（无详情）</div>
           </template>
         </el-table-column>
-        <el-table-column prop="table" label="表" width="110" />
+        <el-table-column prop="table" label="表" width="90">
+          <template #default="{ row }">{{ tableLabel(row.table) }}</template>
+        </el-table-column>
+        <el-table-column label="ID" width="80">
+          <template #default="{ row }">
+            <span class="mono">{{ row.change === 'modified' ? `${row.id_a}→${row.id_b}` : row.id }}</span>
+          </template>
+        </el-table-column>
         <el-table-column prop="name" label="名称" />
-        <el-table-column prop="change" label="变化" width="110">
+        <el-table-column prop="change" label="变化" width="100">
           <template #default="{ row }">
             <el-tag :type="row.change === 'added' ? 'success' : row.change === 'removed' ? 'danger' : 'warning'" size="small">
-              {{ row.change }}
+              {{ changeLabel(row.change) }}
             </el-tag>
+          </template>
+        </el-table-column>
+        <el-table-column label="操作" width="150" fixed="right">
+          <template #default="{ row }">
+            <el-button size="small" @click="jump(row)">跳转</el-button>
+            <el-button size="small" @click="openDetail(row)">详情</el-button>
           </template>
         </el-table-column>
       </el-table>
     </el-card>
+    <!-- 差异详情子弹窗（类 IDEA：内嵌数据页并排对比画面） -->
+    <el-dialog v-model="detailVisible" :title="detailTitle" width="92%" top="4vh" destroy-on-close>
+      <iframe v-if="detailUrl" :src="detailUrl" class="detail-frame" />
+    </el-dialog>
   </div>
 </template>
 
 <script setup lang="ts">
-import { computed, ref } from 'vue'
+import { computed, onMounted, ref } from 'vue'
+import { useRouter } from 'vue-router'
 import { ElMessage } from 'element-plus'
 import { api } from '../api/client'
 import FilePicker from '../components/FilePicker.vue'
+import { useCompare, versionLabel } from '../composables/useCompare'
+import { FIELDS, TABLE_LABELS, TABLE_ROUTES } from '../compare/fields'
 
-const base = ref('')
-const target = ref('')
+const router = useRouter()
+const compare = useCompare()
+
+const versions = ref<any[]>([])
+const versionId = ref<number | null>(null)
+const targetFile = ref('')
 const report = ref<any>(null)
 const loading = ref(false)
+const advOpen = ref<string[]>([])
 
 const records = computed(() => report.value?.records ?? [])
 
-// 可读值：对象展开为 k=v 对，数组用分号连接，替代裸 JSON.stringify（TODO P0-2）
+// 差异详情子弹窗
+const detailVisible = ref(false)
+const detailUrl = ref('')
+const detailTitle = ref('')
+
+function tableLabel(t: string | number): string {
+  const s = String(t)
+  return (TABLE_LABELS as Record<string, string>)[s] || s
+}
+
+function changeLabel(c: string): string {
+  return c === 'added' ? '新增' : c === 'removed' ? '删除' : c === 'modified' ? '修改' : c
+}
+
+// 字段名中文映射（复用 compare/fields.ts 的字段定义）
+function fieldLabel(table: string, key: string | number): string {
+  const k = String(key)
+  const tf = (FIELDS as Record<string, any>)[table]
+  if (!tf) return k
+  const s = tf.scalar?.find((f: any) => f.key === k)
+  if (s) return s.label
+  const l = tf.list?.find((f: any) => f.key === k)
+  if (l) return l.label
+  return k
+}
+
 function fmtVal(v: unknown): string {
   if (v === null || v === undefined) return '—'
   if (Array.isArray(v)) return v.length ? v.map((x) => fmtVal(x)).join('；') : '（空）'
@@ -98,11 +177,19 @@ function fmtVal(v: unknown): string {
   return String(v)
 }
 
-async function run() {
-  if (!base.value || !target.value) return ElMessage.warning('请填写基准与目标 dat 路径')
+async function loadVersions() {
+  try {
+    versions.value = await compare.refreshVersions()
+  } catch (e: any) {
+    ElMessage.error(e.message)
+  }
+}
+
+async function runAgainstVersion() {
+  if (versionId.value == null) return ElMessage.warning('请先选择对比版本')
   loading.value = true
   try {
-    report.value = await api.diff(base.value, target.value)
+    report.value = await api.diffAgainstVersion(versionId.value)
   } catch (e: any) {
     ElMessage.error(e.message)
   } finally {
@@ -110,22 +197,77 @@ async function run() {
   }
 }
 
-async function generatePatch() {
+async function runAgainstFile() {
+  if (!targetFile.value) return ElMessage.warning('请选择目标 dat 文件')
+  loading.value = true
   try {
-    const r: any = await api.patchGenerate(base.value, target.value)
-    ElMessage.success('已生成补丁')
-    navigator.clipboard?.writeText(r.patch)
+    report.value = await api.diff(await currentBasePath(), targetFile.value)
   } catch (e: any) {
     ElMessage.error(e.message)
+  } finally {
+    loading.value = false
   }
 }
+
+async function currentBasePath(): Promise<string> {
+  // 按文件对比需基准文件路径；当前 dat 已在内存，这里用 datInfo.path
+  const info: any = await api.datInfo()
+  return info?.path || ''
+}
+
+// 跳转到数据页定位该实体（modified 跳基准 id，added 跳目标 id）
+function jump(row: any) {
+  const table = row.table
+  const id = row.change === 'modified' ? row.id_a : row.id
+  if (id == null) return ElMessage.warning('该记录无 id')
+  const route = (TABLE_ROUTES as Record<string, string>)[table]
+  if (!route) return ElMessage.warning('未知表')
+  const query: Record<string, string> = { id: String(id) }
+  if (table === 'units') query.civ = '0'
+  router.push({ path: route, query })
+}
+
+// 打开详情子弹窗：内嵌该实体的并排对比画面（类 IDEA）
+async function openDetail(row: any) {
+  const table = row.table
+  const id = row.change === 'modified' ? row.id_a : row.id
+  if (id == null) return ElMessage.warning('该记录无 id')
+  // 确保对比目标已选为当前版本，让子弹窗内直接出差异
+  try {
+    if (versionId.value != null) await compare.selectVersion(versionId.value)
+  } catch {
+    /* 无版本时子弹窗内可自行选版本 */
+  }
+  const query = table === 'units' ? '?civ=0' : ''
+  detailTitle.value = `${tableLabel(table)} #${id} · ${row.name || ''}`
+  detailUrl.value = `/compare/${table}/${id}${query}`
+  detailVisible.value = true
+}
+
+async function generatePatch() {
+  ElMessage.info('补丁导出需先选定基准/目标文件，暂不支持按版本导出')
+}
+
+onMounted(loadVersions)
 </script>
 
 <style scoped>
+.diff-view { padding: 16px 20px 32px; }
+.head { display: flex; align-items: center; gap: 12px; margin-bottom: 14px; }
+.head h2 { margin: 0; font-size: 17px; color: var(--fg); }
+.hint { color: var(--muted); font-size: 12px; }
+.target-bar { display: flex; align-items: center; gap: 8px; margin-bottom: 10px; }
+.lbl { font-size: 12px; color: var(--muted); flex-shrink: 0; }
+.adv { margin-bottom: 12px; }
+.file-row { display: flex; align-items: center; gap: 8px; }
+.file-row :deep(.file-picker) { flex: 1; }
 .expand-block { padding: 6px 12px; }
 .expand-block .kv { display: flex; gap: 12px; padding: 2px 0; font-size: 12px; }
-.expand-block .kv .k { width: 200px; flex-shrink: 0; color: var(--el-text-color-secondary); }
+.expand-block .kv .k { width: 220px; flex-shrink: 0; color: var(--muted); }
+.fld { color: var(--muted); }
 .old-val { color: #ec7a88; }
 .new-val { color: #8ae0a8; }
-.muted { color: var(--el-text-color-placeholder); }
+.muted { color: var(--muted); }
+.mono { font-family: var(--f-mono); }
+.detail-frame { width: 100%; height: 72vh; border: none; border-radius: 4px; }
 </style>

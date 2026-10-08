@@ -98,6 +98,8 @@ export const api = {
     request('/api/copy', { method: 'POST', body: JSON.stringify({ table, src, dst, civ }) }),
   diff: (base: string, target: string) =>
     request('/api/diff', { method: 'POST', body: JSON.stringify({ base, target }) }),
+  diffAgainstVersion: (versionId: number) =>
+    request('/api/diff/against-version', { method: 'POST', body: JSON.stringify({ version_id: versionId }) }),
   patchApply: (patch: string, overrides?: Record<number, number[]>, skip?: number[]) =>
     request('/api/patch/apply', { method: 'POST', body: JSON.stringify({ patch, overrides, skip }) }),
   patchPreview: (patch: string, overrides?: Record<number, number[]>, skip?: number[]) =>

@@ -17,6 +17,23 @@ def run_diff(body: DiffRequest):
     return diff_engine.diff(body.base, body.target)
 
 
+@router.post("/against-version")
+def diff_against_version(body: dict):
+    """以当前加载 dat 为基准，对比某个版本快照。body: {version_id}"""
+    version_id = body.get("version_id")
+    rec = version_store.get(version_id) if isinstance(version_id, int) else None
+    if rec is None:
+        raise HTTPException(404, "版本不存在")
+    snap = version_store.snapshot_path(version_id)
+    if snap is None or not snap.exists():
+        raise HTTPException(404, "版本快照文件缺失")
+    try:
+        report = diff_engine.diff_current(str(snap))
+    except Exception as exc:  # noqa: BLE001
+        raise HTTPException(400, f"对比失败: {exc}") from exc
+    return {**report, "version": rec}
+
+
 @router.get("/{job_id}")
 def get_diff_job(job_id: str):
     # TODO: 异步任务查询（后台线程 + 进度）

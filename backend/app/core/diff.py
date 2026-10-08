@@ -107,16 +107,8 @@ def _plain_row(obj, table: str) -> dict:
     return {f: _plain(getattr(obj, f)) for f in _COMPARE_FIELDS[table] if hasattr(obj, f)}
 
 
-def diff(base_path, target_path) -> dict:
-    """对比两个 dat 文件，返回结构化 DiffReport。"""
-    from genieutils.datfile import DatFile
-
-    from .genieutils_fix import apply
-
-    apply()
-    a = DatFile.parse(str(base_path))
-    b = DatFile.parse(str(target_path))
-
+def _diff_objects(a, b) -> dict:
+    """对比两个已解析的 DatFile 对象，返回 DiffReport。"""
     report = {"table": {}, "records": [], "id_drift": []}
 
     # 表级
@@ -133,11 +125,23 @@ def diff(base_path, target_path) -> dict:
 
         for n in sorted(nb.keys() - na.keys()):
             report["records"].append(
-                {"table": table, "name": n, "change": "added", "record": _plain_row(objs_b[nb[n][0]], table)}
+                {
+                    "table": table,
+                    "name": n,
+                    "change": "added",
+                    "id": nb[n][0],
+                    "record": _plain_row(objs_b[nb[n][0]], table),
+                }
             )
         for n in sorted(na.keys() - nb.keys()):
             report["records"].append(
-                {"table": table, "name": n, "change": "removed", "record": _plain_row(objs_a[na[n][0]], table)}
+                {
+                    "table": table,
+                    "name": n,
+                    "change": "removed",
+                    "id": na[n][0],
+                    "record": _plain_row(objs_a[na[n][0]], table),
+                }
             )
 
         for n in sorted(na.keys() & nb.keys()):
@@ -153,6 +157,7 @@ def diff(base_path, target_path) -> dict:
                         "table": table,
                         "name": n,
                         "change": "modified",
+                        "id": ia,
                         "id_a": ia,
                         "id_b": ib,
                         "changes": changes,
@@ -167,3 +172,28 @@ def diff(base_path, target_path) -> dict:
         "id_drift": len(report["id_drift"]),
     }
     return report
+
+
+def diff(base_path, target_path) -> dict:
+    """对比两个 dat 文件，返回结构化 DiffReport。"""
+    from genieutils.datfile import DatFile
+
+    from .genieutils_fix import apply
+
+    apply()
+    a = DatFile.parse(str(base_path))
+    b = DatFile.parse(str(target_path))
+    return _diff_objects(a, b)
+
+
+def diff_current(target_path) -> dict:
+    """以当前内存 dat 为基准，对比目标 dat 文件（基准不重复 parse）。"""
+    from genieutils.datfile import DatFile
+
+    from .dat_core import dat_core
+    from .genieutils_fix import apply
+
+    apply()
+    a = dat_core.get()
+    b = DatFile.parse(str(target_path))
+    return _diff_objects(a, b)
