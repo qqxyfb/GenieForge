@@ -111,9 +111,9 @@ body,
   background: transparent;
 }
 
-/* 分页栏在窄侧栏（260px）内紧凑显示：缩小每页数量下拉、控制分页条不溢出 */
+/* 分页栏在窄侧栏内紧凑显示：缩小每页数量下拉、固定一行不换行 */
 .el-pagination {
-  flex-wrap: wrap;
+  flex-wrap: nowrap;
   justify-content: center;
 }
 .el-pagination__sizes {
@@ -143,4 +143,18 @@ body,
   text-align: right;
   font-family: var(--f-mono);
   font-variant-numeric: tabular-nums;
+}
+
+/* 栏间拖拽分隔条（列表栏 / 详情 / 关联面板） */
+.resize-handle {
+  width: 5px;
+  flex: 0 0 5px;
+  cursor: col-resize;
+  background: transparent;
+  transition: background 0.15s;
+  z-index: 5;
+}
+.resize-handle:hover,
+.resize-handle:active {
+  background: var(--gold);
 }

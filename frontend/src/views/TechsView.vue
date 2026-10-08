@@ -1,8 +1,8 @@
 <template>
   <div class="editor" @keydown.ctrl.67="cp.copy(currentId)" @keydown.ctrl.86="cp.paste(currentId)">
     <div class="body">
-      <!-- 左栏：列表（宽 260px） -->
-      <div class="list-panel">
+      <!-- 左栏：列表（可拖拽调宽） -->
+      <div class="list-panel" :style="{ width: listWidth + 'px', flex: '0 0 ' + listWidth + 'px' }">
         <div class="list-filter">
           <el-input
             v-model="q"
@@ -86,6 +86,9 @@
           />
         </div>
       </div>
+
+      <!-- 分隔条：拖拽调整左栏宽度 -->
+      <div class="resize-handle" @mousedown="startResize('list', $event)"></div>
 
       <!-- 中间：字段区 -->
       <div class="main-panel" v-if="detail">
@@ -261,8 +264,15 @@
         <el-empty description="选择左侧科技查看详情" />
       </div>
 
-      <!-- 右栏：关联面板（宽 260px） -->
-      <RelationPanel table="techs" :entity-id="detail?.id ?? null" />
+      <!-- 分隔条：拖拽调整右栏宽度 -->
+      <div class="resize-handle" @mousedown="startResize('relation', $event)"></div>
+
+      <!-- 右栏：关联面板（可拖拽调宽） -->
+      <RelationPanel
+        table="techs"
+        :entity-id="detail?.id ?? null"
+        :style="{ width: relationWidth + 'px', flex: '0 0 ' + relationWidth + 'px' }"
+      />
     </div>
 
     <!-- 改动转为补丁对话框 -->
@@ -283,7 +293,9 @@ import Field from '../components/Field.vue'
 import RelationPanel from '../components/RelationPanel.vue'
 import PatchFromChangesDialog from '../components/PatchFromChangesDialog.vue'
 import { useCopyPaste } from '../composables/useCopyPaste'
+import { usePanelResize } from '../composables/usePanelResize'
 
+const { listWidth, relationWidth, startResize } = usePanelResize()
 const cp = useCopyPaste('techs')
 const appStore = useAppStore()
 const historyStore = useHistoryStore()

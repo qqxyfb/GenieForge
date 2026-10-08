@@ -21,8 +21,8 @@
     </div>
 
     <div class="body">
-      <!-- 左栏：列表（宽 260px） -->
-      <div class="list-panel">
+      <!-- 左栏：列表（可拖拽调宽） -->
+      <div class="list-panel" :style="{ width: listWidth + 'px', flex: '0 0 ' + listWidth + 'px' }">
         <div class="list-filter">
           <el-input
             v-model="q"
@@ -87,6 +87,9 @@
           />
         </div>
       </div>
+
+      <!-- 分隔条：拖拽调整左栏宽度 -->
+      <div class="resize-handle" @mousedown="startResize('list', $event)"></div>
 
       <!-- 中间：字段区 -->
       <div class="main-panel" v-if="detail && detail.present">
@@ -423,8 +426,16 @@
         <el-empty :description="detail && !detail.present ? '该文明无此单位' : '选择左侧单位查看详情'" />
       </div>
 
-      <!-- 右栏：关联面板（宽 260px，单位表对应 unit_headers） -->
-      <RelationPanel table="unit_headers" :entity-id="currentUnit >= 0 ? currentUnit : null" :hide-reverse-tables="['civs']" />
+      <!-- 分隔条：拖拽调整右栏宽度 -->
+      <div class="resize-handle" @mousedown="startResize('relation', $event)"></div>
+
+      <!-- 右栏：关联面板（单位表对应 unit_headers，可拖拽调宽） -->
+      <RelationPanel
+        table="unit_headers"
+        :entity-id="currentUnit >= 0 ? currentUnit : null"
+        :hide-reverse-tables="['civs']"
+        :style="{ width: relationWidth + 'px', flex: '0 0 ' + relationWidth + 'px' }"
+      />
     </div>
 
     <!-- 改动转为补丁对话框 -->
@@ -445,7 +456,9 @@ import Field from '../components/Field.vue'
 import RelationPanel from '../components/RelationPanel.vue'
 import PatchFromChangesDialog from '../components/PatchFromChangesDialog.vue'
 import { useCopyPaste } from '../composables/useCopyPaste'
+import { usePanelResize } from '../composables/usePanelResize'
 
+const { listWidth, relationWidth, startResize } = usePanelResize()
 const cp = useCopyPaste('units')
 const appStore = useAppStore()
 const historyStore = useHistoryStore()
