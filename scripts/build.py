@@ -18,6 +18,9 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[1]
 DIST_DIR = ROOT / "dist"
 
+sys.path.insert(0, str(ROOT / "scripts"))
+from get_version import get_version  # noqa: E402
+
 
 def _sh(cmd: list[str], cwd: Path | None = None) -> None:
     print(f"\n$ {' '.join(cmd)}")
@@ -98,10 +101,11 @@ def make_zip(src_dir: Path, out_zip: Path) -> None:
 
 def main() -> None:
     ap = argparse.ArgumentParser()
-    ap.add_argument("--version", default="0.2.0", help="发布版本号")
+    ap.add_argument("--version", default=None, help="发布版本号（默认读 backend/app/__init__.py 的 __version__）")
     ap.add_argument("--skip-frontend", action="store_true")
     ap.add_argument("--skip-installer", action="store_true")
     args = ap.parse_args()
+    version = args.version or get_version()
 
     node = sys.argv and (__import__("os").environ.get("NODE") or shutil.which("node") or "node")
     npm = __import__("os").environ.get("NPM_CLI") or ""
@@ -119,9 +123,9 @@ def main() -> None:
         print(f"[build] 未找到打包输出 {onedir}，跳过 zip/checksums")
         sys.exit(1)
 
-    release_dir = ROOT / "release" / args.version
+    release_dir = ROOT / "release" / version
     release_dir.mkdir(parents=True, exist_ok=True)
-    zip_path = release_dir / f"GenieForge-{args.version}-windows.zip"
+    zip_path = release_dir / f"GenieForge-{version}-windows.zip"
     make_zip(onedir, zip_path)
     make_checksums(onedir, release_dir / "checksums.txt")
 

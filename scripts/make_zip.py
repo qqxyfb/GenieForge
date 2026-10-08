@@ -11,9 +11,12 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
 
+sys.path.insert(0, str(ROOT / "scripts"))
+from get_version import get_version  # noqa: E402
+
 
 def main() -> None:
-    version = sys.argv[1] if len(sys.argv) > 1 else "0.3.2"
+    version = sys.argv[1] if len(sys.argv) > 1 else get_version()
     src = ROOT / "dist" / "GenieForge"
     if not src.exists():
         print("[错误] dist/GenieForge 不存在，请先运行 PyInstaller 打包")

@@ -8,12 +8,19 @@ REM  Usage:
 REM    build.bat [version] [--skip-frontend]
 REM
 REM  Examples:
-REM    build.bat 0.4.0                  build frontend + package + zip
-REM    build.bat 0.4.0 --skip-frontend  skip frontend build (use existing dist)
+REM    build.bat                  use version from backend/app/__init__.py
+REM    build.bat 0.4.0            override version
+REM    build.bat 0.4.0 --skip-frontend   skip frontend build
+REM
+REM  Output:
+REM    dist\GenieForge\GenieForge.exe
+REM    release\<version>\GenieForge-<version>-windows.zip
 REM ============================================================
 
 set VERSION=%1
-if "%VERSION%"=="" set VERSION=0.3.2
+if "%VERSION%"=="" (
+    for /f "delims=" %%v in ('python scripts\get_version.py') do set VERSION=%%v
+)
 set SKIP_FRONTEND=0
 if /i "%~2"=="--skip-frontend" set SKIP_FRONTEND=1
 
@@ -57,5 +64,11 @@ echo [3/3] creating zip ...
 python scripts\make_zip.py %VERSION%
 
 echo.
-echo Done! Output: release\%VERSION%\GenieForge-%VERSION%-windows.zip
+echo ============================================
+echo  Build done!  v%VERSION%
+echo  exe : %CD%\dist\GenieForge\GenieForge.exe
+echo  zip : %CD%\release\%VERSION%\GenieForge-%VERSION%-windows.zip
+echo ============================================
+echo  Opening release folder...
+start "" explorer "%CD%\release\%VERSION%"
 exit /b 0
