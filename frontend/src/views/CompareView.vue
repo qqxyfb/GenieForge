@@ -224,6 +224,31 @@ function fmt(v: unknown): string {
   return String(v)
 }
 
+// 枚举名称缓存（metaName -> value -> label），用于把子表数字显示为「数字 名称」
+const metaCache = new Map<string, Map<number, string>>()
+
+async function loadMeta(name: string): Promise<Map<number, string>> {
+  if (metaCache.has(name)) return metaCache.get(name)!
+  try {
+    const r: any = await api.meta(name)
+    const m = new Map<number, string>()
+    for (const it of r.items || []) m.set(it.value, it.label)
+    metaCache.set(name, m)
+    return m
+  } catch {
+    metaCache.set(name, new Map())
+    return metaCache.get(name)!
+  }
+}
+
+async function preloadMetas() {
+  const metas = new Set<string>()
+  for (const lf of fields.value.list) {
+    for (const c of lf.columns) if (c.meta) metas.add(c.meta)
+  }
+  await Promise.all([...metas].map((m) => loadMeta(m)))
+}
+
 // ------------------------------------------------------------------ 差异计算
 
 function isScalarDiff(f: ScalarField): boolean {
@@ -337,7 +362,15 @@ function rowMark(rd: RowDiff): string {
 function cells(lf: ListField, row: any): string[] {
   if (row === null || row === undefined) return ['（无此行）']
   if (!lf.columns.length) return [fmt(row)]
-  return lf.columns.map((c) => fmt(row?.[c.key]))
+  return lf.columns.map((c) => {
+    const v = row?.[c.key]
+    const s = fmt(v)
+    if (c.meta && v != null && v !== '') {
+      const label = metaCache.get(c.meta)?.get(Number(v))
+      if (label) return `${v} ${label}`
+    }
+    return s
+  })
 }
 
 function cellClass(rd: RowDiff, side: 'left' | 'right'): string {
@@ -473,6 +506,7 @@ watch(
 
 onMounted(async () => {
   compare.refreshVersions().catch(() => {})
+  await preloadMetas()
   await loadBase()
   await loadTarget()
 })

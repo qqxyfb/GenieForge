@@ -1,8 +1,9 @@
-"""版本历史 / 回滚 / 导入。
+"""版本历史 / 回滚 / 导入 / 导出。
 
 快照与索引的落盘细节见 :mod:`app.core.version`（存储目录、按哈希去重、原子索引）。
 """
 
+import shutil
 from pathlib import Path
 
 from fastapi import APIRouter, HTTPException
@@ -57,6 +58,28 @@ def import_version(body: dict):
     except OSError as exc:
         raise HTTPException(400, f"导入失败: {exc}") from exc
     return {"status": "ok", "version": rec}
+
+
+@router.post("/export")
+def export_version(body: dict):
+    """把某个版本快照导出为一个 dat 文件。body: {id, dest_path}"""
+    version_id = body.get("id")
+    rec = version_store.get(version_id) if isinstance(version_id, int) else None
+    if rec is None:
+        raise HTTPException(404, "版本不存在")
+    snap = version_store.snapshot_path(version_id)
+    if snap is None or not snap.exists():
+        raise HTTPException(404, "版本快照文件缺失")
+    dest = body.get("dest_path")
+    if not dest:
+        raise HTTPException(400, "缺少 dest_path")
+    dest_path = Path(dest)
+    dest_path.parent.mkdir(parents=True, exist_ok=True)
+    try:
+        shutil.copyfile(snap, dest_path)
+    except OSError as exc:
+        raise HTTPException(400, f"导出失败: {exc}") from exc
+    return {"status": "ok", "dest": str(dest_path)}
 
 
 @router.delete("/{version_id}")

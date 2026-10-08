@@ -168,12 +168,13 @@
 
 <script setup lang="ts">
 import { computed, onMounted, ref } from 'vue'
-import { useRoute } from 'vue-router'
+import { useRoute, useRouter } from 'vue-router'
 import { ElMessage } from 'element-plus'
 import { useAppStore } from './stores'
 import { api } from './api/client'
 import GlobalSearch from './components/GlobalSearch.vue'
 const route = useRoute()
+const router = useRouter()
 const appStore = useAppStore()
 const isActing = ref(false)
 
@@ -267,7 +268,26 @@ async function handleSave() {
 
 onMounted(async () => {
   await appStore.refreshDatInfo()
+  // 返回键适配：鼠标侧键（后退/前进）+ 键盘 Ctrl+Alt+左/右箭头
+  window.addEventListener('mouseup', onMouseButton)
+  window.addEventListener('keydown', onNavKey)
 })
+
+function onMouseButton(e: MouseEvent) {
+  // 浏览器侧键：button 3 = 后退，button 4 = 前进
+  if (e.button === 3) router.back()
+  else if (e.button === 4) router.forward()
+}
+
+function onNavKey(e: KeyboardEvent) {
+  if (e.ctrlKey && e.altKey && e.key === 'ArrowLeft') {
+    e.preventDefault()
+    router.back()
+  } else if (e.ctrlKey && e.altKey && e.key === 'ArrowRight') {
+    e.preventDefault()
+    router.forward()
+  }
+}
 </script>
 
 <style scoped>

@@ -74,6 +74,8 @@ export const api = {
 
   // 搜索 / 名称 / 引用
   search: (q: string) => request('/api/search' + qs({ q })),
+  searchByRef: (table: string, direction: string, refTable: string, refId: number) =>
+    request('/api/search/by-ref' + qs({ table, direction, ref_table: refTable, ref_id: refId })),
   names: (id: number) => request(`/api/names/${id}`),
   refsForward: (table: string, id: number) => request(`/api/refs/forward/${table}/${id}`),
   refsReverse: (table: string, id: number) => request(`/api/refs/reverse/${table}/${id}`),
@@ -126,6 +128,8 @@ export const api = {
     request('/api/version/checkout', { method: 'POST', body: JSON.stringify({ id, force }) }),
   versionImport: (path: string, label?: string, project?: string) =>
     request('/api/version/import', { method: 'POST', body: JSON.stringify({ path, label, project }) }),
+  versionExport: (id: number, destPath: string) =>
+    request('/api/version/export', { method: 'POST', body: JSON.stringify({ id, dest_path: destPath }) }),
   versionDelete: (id: number) => request(`/api/version/${id}`, { method: 'DELETE' }),
   updateCheck: () => request('/api/update/check')
 }

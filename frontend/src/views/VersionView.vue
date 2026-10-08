@@ -47,10 +47,11 @@
           <span class="mono">{{ (row.sha256 || '').slice(0, 12) }}</span>
         </template>
       </el-table-column>
-      <el-table-column label="操作" width="200" fixed="right">
+      <el-table-column label="操作" width="260" fixed="right">
         <template #default="{ row }">
           <el-button size="small" @click="useAsCompare(row)">对比</el-button>
           <el-button size="small" type="primary" @click="rollback(row)">回滚</el-button>
+          <el-button size="small" @click="exportDat(row)">导出</el-button>
           <el-button size="small" type="danger" @click="remove(row)">删除</el-button>
         </template>
       </el-table-column>
@@ -188,6 +189,29 @@ async function remove(row: any) {
     if (compare.state.versionId === row.id) compare.clear()
     ElMessage.success('已删除')
     await fetch()
+  } catch (e: any) {
+    ElMessage.error(e.message)
+  }
+}
+
+async function exportDat(row: any) {
+  // 桌面壳有原生保存对话框；浏览器模式退化为手动输入路径
+  const w = (window as any).pywebview
+  let dest = ''
+  if (w && w.api && typeof w.api.save_file_dialog === 'function') {
+    dest = await w.api.save_file_dialog()
+  }
+  if (!dest) {
+    const r = await ElMessageBox.prompt('输入导出目标 dat 路径（含文件名）', '导出 dat', {
+      inputPattern: /.+\.dat$/,
+      inputErrorMessage: '路径需以 .dat 结尾',
+    }).catch(() => null)
+    if (!r) return
+    dest = r.value
+  }
+  try {
+    await api.versionExport(row.id, dest)
+    ElMessage.success(`已导出到 ${dest}`)
   } catch (e: any) {
     ElMessage.error(e.message)
   }

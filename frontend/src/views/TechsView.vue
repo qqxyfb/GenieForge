@@ -28,6 +28,25 @@
               @clear="fetch"
             />
           </div>
+          <div class="dim-selects">
+            <el-select v-model="refFilter" size="small" placeholder="引用筛选" clearable @change="onRefSearch">
+              <el-option value="forward:effects" label="引用了效果" />
+              <el-option value="forward:techs" label="引用了科技" />
+              <el-option value="forward:unit_headers" label="引用了单位" />
+              <el-option value="reverse:techs" label="被科技引用" />
+              <el-option value="reverse:civs" label="被文明引用" />
+            </el-select>
+            <el-input
+              v-if="refFilter"
+              v-model="refId"
+              placeholder="目标 ID"
+              size="small"
+              clearable
+              style="width: 90px"
+              @keyup.enter="onRefSearch"
+              @clear="onRefSearch"
+            />
+          </div>
         </div>
         <div class="list-table-wrap">
           <el-table
@@ -290,6 +309,27 @@ const dims = [
 const dim = ref('')
 const dimValue = ref('')
 
+// 引用筛选：direction:ref_table 组合 + 目标 id
+const refFilter = ref('')
+const refId = ref('')
+const refIds = ref<number[]>([])
+
+async function onRefSearch() {
+  if (!refFilter.value || refId.value === '') {
+    refIds.value = []
+    await fetch()
+    return
+  }
+  const [direction, refTable] = refFilter.value.split(':')
+  try {
+    const r: any = await api.searchByRef('techs', direction, refTable, Number(refId.value))
+    refIds.value = r.ids || []
+    await fetch()
+  } catch (e: any) {
+    ElMessage.error(e.message)
+  }
+}
+
 const techItems = ref<{ value: number; label: string }[]>([])
 const effectItems = ref<{ value: number; label: string }[]>([])
 const civItems = ref<{ value: number; label: string }[]>([])
@@ -373,6 +413,14 @@ function onPageSizeChange() {
 }
 
 async function fetch() {
+  // 引用筛选：后端已算出匹配 id，前端按 id 过滤（科技仅千余条，全量拉取可接受）
+  if (refFilter.value && refId.value !== '') {
+    const all: any = await api.techs({ page: 1, page_size: 5000 })
+    const idSet = new Set(refIds.value)
+    rows.value = all.items.filter((t: any) => idSet.has(t.id))
+    total.value = rows.value.length
+    return
+  }
   const params: Record<string, string | number> = { page: page.value, page_size: pageSize.value }
   if (q.value) params.q = q.value
   if (dim.value && dimValue.value !== '') {

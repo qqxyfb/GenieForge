@@ -15,6 +15,8 @@ export interface ScalarField {
 export interface ListColumn {
   key: string
   label: string
+  /** 枚举 metaName（如 armors / resource-types），用于对比页把数字显示为「数字 名称」 */
+  meta?: string
 }
 
 export interface ListField {
@@ -76,7 +78,7 @@ export const FIELDS: Record<TableKey, TableFields> = {
         label: '费用',
         path: 'resource_costs',
         columns: [
-          { key: 'type', label: '资源' },
+          { key: 'type', label: '资源', meta: 'resource-types' },
           { key: 'amount', label: '数量' }
         ]
       },
@@ -131,7 +133,7 @@ export const FIELDS: Record<TableKey, TableFields> = {
         label: '攻击',
         path: 'type_50.attacks',
         columns: [
-          { key: 'class_', label: '类别' },
+          { key: 'class_', label: '类别', meta: 'armors' },
           { key: 'amount', label: '数值' }
         ]
       },
@@ -140,7 +142,7 @@ export const FIELDS: Record<TableKey, TableFields> = {
         label: '护甲',
         path: 'type_50.armours',
         columns: [
-          { key: 'class_', label: '类别' },
+          { key: 'class_', label: '类别', meta: 'armors' },
           { key: 'amount', label: '数值' }
         ]
       },
@@ -149,7 +151,7 @@ export const FIELDS: Record<TableKey, TableFields> = {
         label: '费用',
         path: 'creatable.resource_costs',
         columns: [
-          { key: 'type', label: '资源' },
+          { key: 'type', label: '资源', meta: 'resource-types' },
           { key: 'amount', label: '数量' }
         ]
       },
@@ -158,7 +160,7 @@ export const FIELDS: Record<TableKey, TableFields> = {
         label: '资源存储',
         path: 'resource_storages',
         columns: [
-          { key: 'type', label: '资源' },
+          { key: 'type', label: '资源', meta: 'civ-resources' },
           { key: 'amount', label: '数量' }
         ]
       },

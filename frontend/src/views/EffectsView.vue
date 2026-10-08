@@ -93,14 +93,27 @@
           <div class="group-title">
             <span>效果命令（{{ detail.effect_commands.length }} 条）</span>
             <span class="cmd-toolbar">
+              <el-button v-if="!allSelected" size="small" @click="selectAll">全选</el-button>
+              <el-button v-else size="small" @click="selectedCmds = []">取消全选</el-button>
               <el-button v-if="selectedCmds.length" size="small" @click="copySelected">复制选中({{ selectedCmds.length }})</el-button>
               <el-button v-if="selectedCmds.length" size="small" type="danger" @click="removeSelected">删除选中</el-button>
               <el-button v-if="cmdClipboard.length" size="small" @click="pasteCmds">粘贴({{ cmdClipboard.length }})</el-button>
               <el-button size="small" @click="addCmd">+ 添加命令</el-button>
             </span>
           </div>
-          <div v-for="(ec, i) in shownCommands" :key="i" class="cmd" :class="{ selected: selectedCmds.includes(i) }">
+          <div
+            v-for="(ec, i) in shownCommands"
+            :key="i"
+            class="cmd"
+            :class="{ selected: selectedCmds.includes(i), dragging: dragIndex === i }"
+            draggable="true"
+            @dragstart="onDragStart(i)"
+            @dragover.prevent="onDragOver(i)"
+            @drop="onDrop(i)"
+            @dragend="onDragEnd"
+          >
             <div class="cmd-head">
+              <span class="drag-handle" title="拖动排序">⋮⋮</span>
               <el-checkbox :model-value="selectedCmds.includes(i)" size="small" @change="(v: any) => toggleSelect(i, v)" />
               <span class="cmd-idx mono">#{{ i }}</span>
               <EnumSelect meta-name="effect-types" :model-value="ec.type" style="width: 180px" @change="(v) => onTypeChange(i, v)" />
@@ -304,6 +317,39 @@ async function removeCmd(i: number) {
 function toggleSelect(i: number, v: boolean) {
   if (v) selectedCmds.value = [...selectedCmds.value, i]
   else selectedCmds.value = selectedCmds.value.filter((x) => x !== i)
+}
+
+const allSelected = computed(() => {
+  const n = detail.value?.effect_commands?.length || 0
+  return n > 0 && selectedCmds.value.length === n
+})
+
+function selectAll() {
+  selectedCmds.value = (detail.value?.effect_commands || []).map((_: unknown, i: number) => i)
+}
+
+// 拖动排序
+const dragIndex = ref(-1)
+
+function onDragStart(i: number) {
+  dragIndex.value = i
+}
+
+function onDragOver(i: number) {
+  // 高亮放置目标（样式由 dragIndex 触发，这里只需阻止默认）
+}
+
+function onDrop(i: number) {
+  if (dragIndex.value < 0 || dragIndex.value === i) return
+  const cmds = [...detail.value.effect_commands]
+  const [moved] = cmds.splice(dragIndex.value, 1)
+  cmds.splice(i, 0, moved)
+  dragIndex.value = -1
+  saveTable(cmds)
+}
+
+function onDragEnd() {
+  dragIndex.value = -1
 }
 
 function toggleCollapse(i: number) {
@@ -629,6 +675,25 @@ onMounted(async () => {
 
 .cmd.selected {
   border-color: var(--gold);
+}
+
+.cmd.dragging {
+  opacity: 0.5;
+  border-color: var(--gold);
+}
+
+.drag-handle {
+  color: var(--muted);
+  cursor: grab;
+  font-size: 12px;
+  letter-spacing: -1px;
+  padding: 0 2px;
+  flex-shrink: 0;
+  user-select: none;
+}
+
+.drag-handle:hover {
+  color: var(--gold);
 }
 
 .cmd-params {

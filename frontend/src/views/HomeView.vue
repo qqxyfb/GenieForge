@@ -63,25 +63,25 @@
       <div class="card-body">
         <div class="op-form">
           <div class="file-picker-wrap">
-            <label class="op-label">dat 路径</label>
-            <FilePicker v-model="datPath" placeholder="例如：empires2_x2_p1.dat 路径" />
+            <label class="op-label">从版本加载</label>
+            <div class="version-load-row">
+              <el-select v-model="loadVersion" size="small" filterable placeholder="选择版本" style="flex: 1">
+                <el-option v-for="v in versions" :key="v.id" :value="v.id" :label="versionLabel(v)" />
+              </el-select>
+              <button type="button" class="btn primary" :disabled="loading || loadVersion == null" @click="loadFromVersion">
+                {{ loading ? '加载中…' : '加载版本' }}
+              </button>
+            </div>
           </div>
-          <div class="op-actions">
-            <button
-              type="button"
-              class="btn primary"
-              :disabled="loading"
-              @click="load"
-            >
-              {{ loading ? '解析中（约需 10-20 秒）…' : '加载 dat' }}
-            </button>
-            <button
-              type="button"
-              class="btn"
-              @click="checkUpdate"
-            >
-              检查更新
-            </button>
+          <div class="file-picker-wrap">
+            <label class="op-label">从文件加载</label>
+            <FilePicker v-model="datPath" placeholder="例如：empires2_x2_p1.dat 路径" />
+            <div class="op-actions">
+              <button type="button" class="btn" :disabled="loading" @click="load">
+                {{ loading ? '解析中（约需 10-20 秒）…' : '加载 dat' }}
+              </button>
+              <button type="button" class="btn" @click="checkUpdate">检查更新</button>
+            </div>
           </div>
         </div>
       </div>
@@ -102,10 +102,43 @@ const historyStore = useHistoryStore()
 const datInfo = computed(() => appStore.datInfo)
 const datPath = ref('')
 const loading = ref(false)
+const versions = ref<any[]>([])
+const loadVersion = ref<number | null>(null)
+
+function versionLabel(v: any): string {
+  const project = v.project ? `[${v.project}] ` : ''
+  return `v${v.id} ${project}${v.label}`
+}
 
 async function refresh() {
   health.value = await api.health().catch(() => null)
   await appStore.refreshDatInfo()
+  await loadVersions()
+}
+
+async function loadVersions() {
+  try {
+    const r: any = await api.versionList()
+    versions.value = r.versions
+  } catch {
+    versions.value = []
+  }
+}
+
+async function loadFromVersion() {
+  if (loadVersion.value == null) return ElMessage.warning('请先选择要加载的版本')
+  loading.value = true
+  try {
+    await api.versionCheckout(loadVersion.value, true)
+    historyStore.clearAll()
+    await appStore.refreshDatInfo()
+    appStore.bumpRevision()
+    ElMessage.success('已从版本加载（保存后写回原 dat）')
+  } catch (e: any) {
+    ElMessage.error(e.message)
+  } finally {
+    loading.value = false
+  }
 }
 
 async function load() {
@@ -303,6 +336,12 @@ onMounted(refresh)
   display: flex;
   flex-direction: column;
   gap: 6px;
+}
+
+.version-load-row {
+  display: flex;
+  gap: 8px;
+  align-items: center;
 }
 
 .op-label {

@@ -26,6 +26,17 @@ class Api:
         )
         return result[0] if result else None
 
+    def save_file_dialog(self) -> str | None:
+        """原生保存文件对话框，返回目标保存路径（取消返回 None）。"""
+        result = webview.windows[0].create_file_dialog(
+            webview.SAVE_DIALOG,
+            allow_multiple=False,
+            file_types=("Dat 文件 (*.dat)", "所有文件 (*.*)"),
+        )
+        if not result:
+            return None
+        return result if isinstance(result, str) else result[0]
+
 
 def main() -> None:
     from backend.app.main import app
