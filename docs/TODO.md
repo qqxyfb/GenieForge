@@ -18,9 +18,9 @@
 - added/removed 行的展开框此前为空白：后端 `diff.py` 现为新增/删除记录附带 `record` 字段详情，前端三种变化都渲染展开内容。
 - 变更值不再裸 `JSON.stringify`：新增 `fmtVal` 可读格式化（对象展开为 k=v、数组分号连接），旧值红 / 新值绿。
 
-### 3. 🔶 对比功能与「版本」融合 —— 部分完成（2026-10-05）
-- 已完成：对比目标可从「版本列表」选择（`POST /api/diff/target/load` 接受 `version_id`），不再必须手选文件路径。
-- 未完成：「项目（mod）」概念（项目目录 + 多版本快照管理）、自由导入 dat 作为版本、版本列表 UI 增强。
+### 3. ✅ 对比功能与「版本」融合（2026-10-08）
+- 对比目标可从「版本列表」选择（`POST /api/diff/target/load` 接受 `version_id`），不再必须手选文件路径。
+- 版本记录新增 `project` 字段：`VersionStore.snapshot` 接受 project，`list` 支持按项目过滤并返回去重项目列表；导入/保存 dat 均可挂到项目下；版本页加项目筛选下拉 + 导入时指定项目。
 
 ### 4. ✅ 条件搜索已推广到所有数据页面（2026-10-05）
 - 后端：`GET /api/techs`、`GET /api/units` 新增 `field`/`value` 等值过滤（白名单维度）；`GET /api/effects` 补上此前缺失的 `q` 搜索与 `min_cmds`/`max_cmds` 命令数过滤；文明页客户端过滤。
@@ -61,9 +61,9 @@
 
 ## P1 —— 重要
 
-### 5. 其余搜索维度补全
-- 单位页当前仅 8 个维度（Class/Type/HP/LoS/Garrison/Speed/Icon/语言名），AGE 完整有 80+ 维度。
-- AGE 的 `unit_filters` 完整维度与标记映射已从 `Lists.cpp` 提取，可据此补全。
+### 5. ✅ 其余搜索维度补全（2026-10-08）
+- 单位页搜索维度从 7 个扩展到 **37 个**（AGE 式：Type/ID/Copy ID/Base ID/HP/LoS/驻军/速度/图标/语言字段/启用禁用/交互模式/战斗等级/迷雾/小地图/资源容量衰减/爆炸防御/特质/文明/地形限制/碰撞 XYZ/轮廓/障碍/选择效果等）。
+- 后端 `_FILTER_FIELDS` 白名单扩展（仅单位对象直接标量属性），list_units 动态返回全部维度值；前端 `UNIT_DIMS` 统一维度定义（key+label+AGE 标记），dim1/dim2 显示标记、filterDims 条件搜索共用。
 
 ---
 
