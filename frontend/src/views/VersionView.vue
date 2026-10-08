@@ -10,13 +10,26 @@
       <span class="lbl">导入版本</span>
       <FilePicker v-model="importPath" placeholder="选择 dat 文件" />
       <el-input v-model="importLabel" size="small" class="label-input" placeholder="标签（默认用文件名）" />
+      <el-input v-model="importProject" size="small" class="project-input" placeholder="项目（可选）" />
       <el-button size="small" :loading="importing" @click="doImport">导入</el-button>
+    </div>
+
+    <div class="filter">
+      <span class="lbl">项目筛选</span>
+      <el-select v-model="project" size="small" clearable placeholder="全部项目" style="width: 220px" @change="fetch">
+        <el-option v-for="p in projects" :key="p" :value="p" :label="p" />
+      </el-select>
     </div>
 
     <el-table :data="versions" border stripe class="table">
       <el-table-column prop="id" label="ID" width="60" />
-      <el-table-column prop="label" label="标签" min-width="180" />
-      <el-table-column label="类型" width="90">
+      <el-table-column prop="label" label="标签" min-width="160" />
+      <el-table-column label="项目" width="140">
+        <template #default="{ row }">
+          <span class="mono">{{ row.project || '—' }}</span>
+        </template>
+      </el-table-column>
+      <el-table-column label="类型" width="80">
         <template #default="{ row }">
           <el-tag size="small" :type="row.kind === 'imported' ? 'info' : 'success'">
             {{ row.kind === 'imported' ? '导入' : '已保存' }}
@@ -72,20 +85,24 @@ const historyStore = useHistoryStore()
 const compare = useCompare()
 
 const versions = ref<any[]>([])
+const projects = ref<string[]>([])
 const totalSize = ref(0)
 const loading = ref(false)
 const importing = ref(false)
 const rolling = ref(false)
 const importPath = ref('')
 const importLabel = ref('')
+const importProject = ref('')
+const project = ref('')
 const confirmVisible = ref(false)
 const pending = ref<any>(null)
 
 async function fetch() {
   loading.value = true
   try {
-    const r: any = await api.versionList()
+    const r: any = await api.versionList(project.value || undefined)
     versions.value = r.versions
+    projects.value = r.projects || []
     totalSize.value = r.total_size
   } catch (e: any) {
     ElMessage.error(e.message)
@@ -101,10 +118,11 @@ async function doImport() {
   }
   importing.value = true
   try {
-    await api.versionImport(importPath.value, importLabel.value || undefined)
+    await api.versionImport(importPath.value, importLabel.value || undefined, importProject.value || undefined)
     ElMessage.success('已导入版本')
     importPath.value = ''
     importLabel.value = ''
+    importProject.value = ''
     await fetch()
   } catch (e: any) {
     ElMessage.error(e.message)
@@ -226,7 +244,24 @@ onMounted(fetch)
 }
 
 .label-input {
-  width: 220px;
+  width: 200px;
+}
+
+.project-input {
+  width: 140px;
+}
+
+.filter {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 12px;
+}
+
+.filter .lbl {
+  font-size: 12px;
+  color: var(--muted);
+  flex-shrink: 0;
 }
 
 .table {

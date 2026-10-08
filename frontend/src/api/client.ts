@@ -120,11 +120,12 @@ export const api = {
     ),
 
   // 版本 / 更新
-  versionList: () => request('/api/version/list'),
+  versionList: (project?: string) =>
+    request('/api/version/list' + (project ? `?project=${encodeURIComponent(project)}` : '')),
   versionCheckout: (id: number, force = false) =>
     request('/api/version/checkout', { method: 'POST', body: JSON.stringify({ id, force }) }),
-  versionImport: (path: string, label?: string) =>
-    request('/api/version/import', { method: 'POST', body: JSON.stringify({ path, label }) }),
+  versionImport: (path: string, label?: string, project?: string) =>
+    request('/api/version/import', { method: 'POST', body: JSON.stringify({ path, label, project }) }),
   versionDelete: (id: number) => request(`/api/version/${id}`, { method: 'DELETE' }),
   updateCheck: () => request('/api/update/check')
 }

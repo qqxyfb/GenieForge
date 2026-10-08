@@ -125,8 +125,11 @@ class VersionStore:
             raise ValueError(f"非法的快照哈希: {sha256!r}")
         return self._snapshots / f"{sha256}.dat"
 
-    def snapshot(self, path: Path | str, label: str, kind: str = KIND_SAVED) -> dict:
-        """把一个 dat 文件存为版本：按哈希去重复制，然后追加一条记录。"""
+    def snapshot(self, path: Path | str, label: str, kind: str = KIND_SAVED, project: str = "") -> dict:
+        """把一个 dat 文件存为版本：按哈希去重复制，然后追加一条记录。
+
+        ``project`` 用于把版本挂到某个 mod 项目下（空串表示不区分项目）。
+        """
         if kind not in VALID_KINDS:
             raise ValueError(f"未知版本类型: {kind}")
         src = Path(path)
@@ -147,6 +150,7 @@ class VersionStore:
             "id": next_id,
             "label": str(label),
             "kind": kind,
+            "project": str(project or ""),
             "sha256": sha,
             "size": size,
             "source_path": str(src),
@@ -156,10 +160,20 @@ class VersionStore:
         self._save_index(records, next_id + 1)
         return rec
 
-    def list(self) -> dict:
-        """返回 ``{versions, total_size}``；total_size 为快照目录的实际占用字节。"""
+    def list(self, project: Optional[str] = None) -> dict:
+        """返回 ``{versions, projects, total_size}``。
+
+        ``project`` 非空时只返回该项目下的版本；``projects`` 为所有出现过的项目名（去重）。
+        """
         records, _ = self._load_state()
-        return {"versions": sorted(records, key=lambda r: r["id"]), "total_size": self._total_size()}
+        if project:
+            records = [r for r in records if r.get("project", "") == project]
+        projects = sorted({r.get("project", "") for r in records if r.get("project", "")})
+        return {
+            "versions": sorted(records, key=lambda r: r["id"]),
+            "projects": projects,
+            "total_size": self._total_size(),
+        }
 
     def _total_size(self) -> int:
         if not self._snapshots.is_dir():

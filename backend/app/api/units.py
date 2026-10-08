@@ -15,14 +15,45 @@ from ..deps import dat_core, require_dat
 router = APIRouter(prefix="/units", tags=["units"])
 
 # 条件搜索允许的维度（AGE 式下拉，等值匹配；class 的对象属性名是 class_）
+# 只收录单位对象上的直接标量属性（type_50/creatable 嵌套字段暂不纳入列表搜索）
 _FILTER_FIELDS = {
     "type": "type",
     "class": "class_",
+    "id": "id",
+    "copy_id": "copy_id",
+    "base_id": "base_id",
     "hit_points": "hit_points",
     "line_of_sight": "line_of_sight",
     "garrison_capacity": "garrison_capacity",
     "speed": "speed",
     "icon_id": "icon_id",
+    "language_dll_name": "language_dll_name",
+    "language_dll_creation": "language_dll_creation",
+    "language_dll_help": "language_dll_help",
+    "enabled": "enabled",
+    "disabled": "disabled",
+    "hide_in_editor": "hide_in_editor",
+    "interaction_mode": "interaction_mode",
+    "combat_level": "combat_level",
+    "sort_number": "sort_number",
+    "fog_visibility": "fog_visibility",
+    "minimap_mode": "minimap_mode",
+    "minimap_color": "minimap_color",
+    "resource_capacity": "resource_capacity",
+    "resource_decay": "resource_decay",
+    "blast_defense_level": "blast_defense_level",
+    "interface_kind": "interface_kind",
+    "trait": "trait",
+    "civilization": "civilization",
+    "terrain_restriction": "terrain_restriction",
+    "collision_size_x": "collision_size_x",
+    "collision_size_y": "collision_size_y",
+    "collision_size_z": "collision_size_z",
+    "outline_size_x": "outline_size_x",
+    "outline_size_y": "outline_size_y",
+    "obstruction_type": "obstruction_type",
+    "obstruction_class": "obstruction_class",
+    "selection_effect": "selection_effect",
 }
 
 
@@ -67,23 +98,17 @@ def list_units(
                 continue
         if want is not None and getattr(u, _FILTER_FIELDS[field or ""], None) != want:
             continue
-        items.append(
-            {
-                "unit_id": uid,
-                "name": name,
-                # 本地化显示名：单位在 dat 里 name 常为空串，需经 language_dll_name 查语言表
-                "display_name": name_resolver.resolve(u, uid)["display"],
-                "type": getattr(u, "type", None),
-                "class": getattr(u, "class_", None),
-                "hit_points": getattr(u, "hit_points", None),
-                "line_of_sight": getattr(u, "line_of_sight", None),
-                "garrison_capacity": getattr(u, "garrison_capacity", None),
-                "speed": getattr(u, "speed", None),
-                "icon_id": getattr(u, "icon_id", None),
-                "language_dll_name": getattr(u, "language_dll_name", None),
-                "present": True,
-            }
-        )
+        item = {
+            "unit_id": uid,
+            "name": name,
+            # 本地化显示名：单位在 dat 里 name 常为空串，需经 language_dll_name 查语言表
+            "display_name": name_resolver.resolve(u, uid)["display"],
+            "present": True,
+        }
+        # 返回所有可搜索维度的值，供前端显示维度标记（AGE 式）
+        for key, attr in _FILTER_FIELDS.items():
+            item[key] = getattr(u, attr, None)
+        items.append(item)
     total = len(items)
     start = (page - 1) * page_size
     return {"civ": civ, "civ_name": c.name, "total": total, "items": items[start : start + page_size]}

@@ -14,8 +14,8 @@ router = APIRouter(prefix="/version", tags=["version"])
 
 
 @router.get("/list")
-def list_versions():
-    return version_store.list()
+def list_versions(project: str | None = None):
+    return version_store.list(project)
 
 
 @router.post("/checkout")
@@ -43,7 +43,7 @@ def checkout(body: dict):
 
 @router.post("/import")
 def import_version(body: dict):
-    """把任意 dat 文件存为一个 kind=imported 的版本。"""
+    """把任意 dat 文件存为一个 kind=imported 的版本（可挂到某个项目下）。"""
     path = body.get("path")
     if not path:
         raise HTTPException(400, "缺少 path")
@@ -51,8 +51,9 @@ def import_version(body: dict):
     if not p.is_file():
         raise HTTPException(400, f"文件不存在: {path}")
     label = str(body.get("label") or p.stem)
+    project = str(body.get("project") or "")
     try:
-        rec = version_store.snapshot(p, label, KIND_IMPORTED)
+        rec = version_store.snapshot(p, label, KIND_IMPORTED, project)
     except OSError as exc:
         raise HTTPException(400, f"导入失败: {exc}") from exc
     return {"status": "ok", "version": rec}

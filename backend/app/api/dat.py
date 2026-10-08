@@ -78,7 +78,8 @@ def save_dat(body: DatSaveRequest | None = None):
         raise HTTPException(status_code=409, detail=str(exc)) from exc
     # 保存本身已经成功：快照只是附带能力，失败时记录日志并在结果里告知前端
     try:
-        version_store.snapshot(result["path"], "保存 dat", KIND_SAVED)
+        project = body.project if body and body.project else ""
+        version_store.snapshot(result["path"], "保存 dat", KIND_SAVED, project)
     except Exception as exc:  # noqa: BLE001
         logger.warning("保存成功但生成版本快照失败: %s", exc)
         result = {**result, "snapshot_error": str(exc)}

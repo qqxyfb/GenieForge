@@ -466,25 +466,55 @@ const detail = ref<any>(null)
 const currentUnit = ref(-1)
 const civItems = ref<{ value: number; label: string }[]>([])
 
+// AGE 式维度定义：key（后端字段）+ label + mark（列表标记缩写）
+const UNIT_DIMS = [
+  { key: 'type', label: '类型 Type', mark: 'T' },
+  { key: 'class', label: '类别 Class', mark: 'C' },
+  { key: 'id', label: 'ID', mark: 'I1' },
+  { key: 'copy_id', label: 'Copy ID', mark: 'CI' },
+  { key: 'base_id', label: 'Base ID', mark: 'BI' },
+  { key: 'hit_points', label: '生命 HP', mark: 'HP' },
+  { key: 'line_of_sight', label: '视野 LoS', mark: 'LS' },
+  { key: 'garrison_capacity', label: '驻军 GC', mark: 'GC' },
+  { key: 'speed', label: '速度 Speed', mark: 'SP' },
+  { key: 'icon_id', label: '图标 Icon', mark: 'I' },
+  { key: 'language_dll_name', label: '语言文件名', mark: 'LN' },
+  { key: 'language_dll_creation', label: '语言创建', mark: 'LC' },
+  { key: 'language_dll_help', label: '语言帮助', mark: 'LH' },
+  { key: 'enabled', label: '启用 Enabled', mark: 'E' },
+  { key: 'disabled', label: '禁用 Disabled', mark: 'D' },
+  { key: 'hide_in_editor', label: '编辑器隐藏', mark: 'HE' },
+  { key: 'interaction_mode', label: '交互模式', mark: 'IM' },
+  { key: 'combat_level', label: '战斗等级', mark: 'CL' },
+  { key: 'sort_number', label: '排序号', mark: 'PM' },
+  { key: 'fog_visibility', label: '迷雾可见', mark: 'VF' },
+  { key: 'minimap_mode', label: '小地图模式', mark: 'MM' },
+  { key: 'minimap_color', label: '小地图颜色', mark: 'MC' },
+  { key: 'resource_capacity', label: '资源容量', mark: 'RC' },
+  { key: 'resource_decay', label: '资源衰减', mark: 'RD' },
+  { key: 'blast_defense_level', label: '爆炸防御', mark: 'BL' },
+  { key: 'interface_kind', label: '界面种类', mark: 'IK' },
+  { key: 'trait', label: '特质 Trait', mark: 'TR' },
+  { key: 'civilization', label: '文明', mark: 'CV' },
+  { key: 'terrain_restriction', label: '地形限制', mark: 'TE' },
+  { key: 'collision_size_x', label: '碰撞 X', mark: 'CX' },
+  { key: 'collision_size_y', label: '碰撞 Y', mark: 'CY' },
+  { key: 'collision_size_z', label: '碰撞 Z', mark: 'CZ' },
+  { key: 'outline_size_x', label: '轮廓 X', mark: 'OX' },
+  { key: 'outline_size_y', label: '轮廓 Y', mark: 'OY' },
+  { key: 'obstruction_type', label: '障碍类型', mark: 'OT' },
+  { key: 'obstruction_class', label: '障碍类别', mark: 'OC' },
+  { key: 'selection_effect', label: '选择效果', mark: 'SE' },
+]
+
 const unitDims = [
   { key: 'none', label: '（无）' },
   { key: 'name', label: '名称' },
-  { key: 'type', label: '类型' },
-  { key: 'class', label: '类别' },
-  { key: 'hit_points', label: '生命' },
-  { key: 'line_of_sight', label: '视野' },
+  ...UNIT_DIMS,
 ]
 
 // 条件搜索（维度等值过滤，真正请求后端；dim1/dim2 保留为显示标记）
-const filterDims = [
-  { key: 'type', label: '类型' },
-  { key: 'class', label: '类别' },
-  { key: 'hit_points', label: '生命' },
-  { key: 'line_of_sight', label: '视野' },
-  { key: 'garrison_capacity', label: '驻军' },
-  { key: 'speed', label: '速度' },
-  { key: 'icon_id', label: '图标' },
-]
+const filterDims = UNIT_DIMS
 const filterDim = ref('')
 const filterValue = ref('')
 
@@ -634,7 +664,10 @@ async function fetch() {
 function dimMark(key: string, row: any): string {
   if (!key || key === 'none' || key === 'name') return ''
   const v = row[key]
-  return v == null ? '' : `${v}`
+  if (v == null) return ''
+  const dim = UNIT_DIMS.find((d) => d.key === key)
+  const mark = dim ? dim.mark : key
+  return `${mark} ${v}`
 }
 
 function formatUnit(row: any): string {

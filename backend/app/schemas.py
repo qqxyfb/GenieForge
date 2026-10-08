@@ -11,6 +11,7 @@ class DatLoadRequest(BaseModel):
 
 class DatSaveRequest(BaseModel):
     path: Optional[str] = None
+    project: Optional[str] = None
 
 
 class ConfigModel(BaseModel):
