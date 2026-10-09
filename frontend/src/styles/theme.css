@@ -138,6 +138,11 @@ body,
   line-height: 22px;
 }
 
+/* 分页栏容器：超出时不溢出边界 */
+.list-foot {
+  overflow-x: hidden;
+}
+
 /* 数字字段右对齐 + 等宽字体（AGE 数值编辑风格） */
 .el-input.num-input .el-input__inner {
   text-align: right;

@@ -50,7 +50,7 @@
     </el-row>
 
     <!-- 变更记录 -->
-    <el-card v-if="report" shadow="never" style="margin-top: 12px">
+    <el-card v-if="report" shadow="never" class="records-card">
       <template #header>
         变更记录
         <el-tag size="small" type="success" style="margin-left: 6px">新增 {{ report.summary.added }}</el-tag>
@@ -58,7 +58,8 @@
         <el-tag size="small" type="warning" style="margin-left: 6px">修改 {{ report.summary.modified }}</el-tag>
         <el-tag size="small" type="info" style="margin-left: 6px">ID 漂移 {{ report.summary.id_drift }}</el-tag>
       </template>
-      <el-table :data="records" size="small" border max-height="520">
+      <div class="records-body">
+        <el-table :data="paginatedRecords" size="small" border height="100%">
         <el-table-column type="expand">
           <template #default="{ row }">
             <el-table v-if="row.change === 'modified'" :data="row.changes" size="small" border>
@@ -117,7 +118,18 @@
             <el-button size="small" @click="openDetail(row)">详情</el-button>
           </template>
         </el-table-column>
-      </el-table>
+        </el-table>
+      </div>
+      <div class="records-foot">
+        <el-pagination
+          v-model:current-page="recPage"
+          v-model:page-size="recPageSize"
+          :page-sizes="[20, 50, 100, 200]"
+          :total="records.length"
+          layout="sizes, prev, pager, next, total"
+          size="small"
+        />
+      </div>
     </el-card>
     <!-- 差异详情子弹窗：内嵌 EntityCompare，与数据页「对比…」画面一致 -->
     <el-dialog v-model="detailVisible" :title="detailTitle" width="94%" top="3vh" destroy-on-close>
@@ -134,7 +146,7 @@
 </template>
 
 <script setup lang="ts">
-import { computed, onMounted, ref } from 'vue'
+import { computed, onMounted, ref, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { api } from '../api/client'
@@ -164,6 +176,16 @@ const targetFile = computed({
 })
 
 const records = computed(() => report.value?.records ?? [])
+
+// 变更记录分页
+const recPage = ref(1)
+const recPageSize = ref(50)
+const paginatedRecords = computed(() => {
+  const start = (recPage.value - 1) * recPageSize.value
+  return records.value.slice(start, start + recPageSize.value)
+})
+// 记录总数变化时回到第一页
+watch(records, () => { recPage.value = 1 })
 
 // 差异详情子弹窗（改用 EntityCompare 组件，不再用 iframe）
 const detailVisible = ref(false)
@@ -341,15 +363,45 @@ onMounted(loadVersions)
 </script>
 
 <style scoped>
-.diff-view { padding: 16px 20px 32px; }
-.head { display: flex; align-items: center; gap: 12px; margin-bottom: 14px; }
+.diff-view {
+  padding: 16px 20px 32px;
+  display: flex;
+  flex-direction: column;
+  min-height: calc(100vh - 48px); /* 填满内容区剩余高度（48px 为顶栏） */
+}
+.head { display: flex; align-items: center; gap: 12px; margin-bottom: 14px; flex-shrink: 0; }
 .head h2 { margin: 0; font-size: 17px; color: var(--fg); }
 .hint { color: var(--muted); font-size: 12px; }
-.target-bar { display: flex; align-items: center; gap: 8px; margin-bottom: 10px; }
+.target-bar { display: flex; align-items: center; gap: 8px; margin-bottom: 10px; flex-shrink: 0; }
 .lbl { font-size: 12px; color: var(--muted); flex-shrink: 0; }
-.adv { margin-bottom: 12px; }
+.adv { margin-bottom: 12px; flex-shrink: 0; }
 .file-row { display: flex; align-items: center; gap: 8px; }
 .file-row :deep(.file-picker) { flex: 1; }
+
+/* 变更记录卡片：自适应剩余高度，避免最大化时下方空白 */
+.records-card {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+}
+.records-card :deep(.el-card__body) {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  padding: 12px;
+}
+.records-body {
+  flex: 1;
+  min-height: 0;
+}
+.records-foot {
+  flex-shrink: 0;
+  display: flex;
+  justify-content: flex-end;
+  padding-top: 10px;
+}
 .expand-block { padding: 6px 12px; }
 .expand-block .kv { display: flex; gap: 12px; padding: 2px 0; font-size: 12px; }
 .expand-block .kv .k { width: 220px; flex-shrink: 0; color: var(--muted); }

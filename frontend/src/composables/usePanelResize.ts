@@ -1,6 +1,7 @@
 import { ref } from 'vue'
 
-const MIN_WIDTH = 200
+// 最小宽度需容纳分页栏（sizes 84px + prev/pager/next ≈ 250px），避免分页溢出边界
+const MIN_WIDTH = 250
 const MAX_WIDTH = 520
 
 // 数据页左右栏宽度（列表栏 / 关联面板栏），支持拖拽分隔条调整，会话内保持。
