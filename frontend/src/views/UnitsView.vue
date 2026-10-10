@@ -24,14 +24,17 @@
       <!-- 左栏：列表（可拖拽调宽） -->
       <div class="list-panel" :style="{ width: listWidth + 'px', flex: '0 0 ' + listWidth + 'px' }">
         <div class="list-filter">
-          <el-input
-            v-model="q"
-            placeholder="搜索单位名…"
-            size="small"
-            clearable
-            @keyup.enter="fetch"
-            @clear="fetch"
-          />
+          <div class="search-row">
+            <el-input
+              v-model="q"
+              placeholder="搜索单位名…"
+              size="small"
+              clearable
+              @keyup.enter="fetch"
+              @clear="fetch"
+            />
+            <ColumnPicker table-key="units" :available="UNIT_COLUMNS" title="定制显示列" />
+          </div>
           <div class="dim-selects">
             <el-select v-model="filterDim" size="small" placeholder="条件" @change="fetch">
               <el-option value="" label="全部维度" />
@@ -72,6 +75,19 @@
                 </span>
               </template>
             </el-table-column>
+            <el-table-column
+              v-for="c in unitVisibleColumns"
+              :key="c.key"
+              :prop="c.key"
+              :label="c.label"
+              :width="c.width"
+              align="right"
+              show-overflow-tooltip
+            >
+              <template #default="{ row }">
+                <span class="mono dim-val">{{ fmtCell(row[c.key]) }}</span>
+              </template>
+            </el-table-column>
           </el-table>
         </div>
         <div class="list-foot">
@@ -81,6 +97,7 @@
             :page-sizes="[20, 50, 100, 200, 500]"
             :total="total"
             layout="sizes, prev, pager, next"
+            :pager-count="5"
             size="small"
             @current-change="fetch"
             @size-change="onPageSizeChange"
@@ -455,8 +472,10 @@ import SubTable from '../components/SubTable.vue'
 import Field from '../components/Field.vue'
 import RelationPanel from '../components/RelationPanel.vue'
 import PatchFromChangesDialog from '../components/PatchFromChangesDialog.vue'
+import ColumnPicker from '../components/ColumnPicker.vue'
 import { useCopyPaste } from '../composables/useCopyPaste'
 import { usePanelResize } from '../composables/usePanelResize'
+import { useListColumns } from '../composables/useListColumns'
 
 const { listWidth, relationWidth, startResize } = usePanelResize()
 const cp = useCopyPaste('units')
@@ -519,6 +538,12 @@ const UNIT_DIMS = [
   { key: 'obstruction_class', label: '障碍类别', mark: 'OC' },
   { key: 'selection_effect', label: '选择效果', mark: 'SE' },
 ]
+
+// 列表可定制列：复用搜索维度（值由后端 list_units 一并返回），默认勾选常用的几列
+const UNIT_COLUMNS = UNIT_DIMS.map((d) => ({ key: d.key, label: d.label, width: 76 }))
+const {
+  visibleColumns: unitVisibleColumns,
+} = useListColumns('units', UNIT_COLUMNS)
 
 const unitDims = [
   { key: 'none', label: '（无）' },
@@ -693,6 +718,13 @@ function formatUnit(row: any): string {
   if (m1) dims.push(m1)
   if (m2) dims.push(m2)
   return dims.length ? `${main} · ${dims.join(' · ')}` : main
+}
+
+// 定制列单元格取值：布尔转「是/否」，null/undefined 显示空
+function fmtCell(v: unknown): string {
+  if (v === null || v === undefined) return ''
+  if (typeof v === 'boolean') return v ? '是' : '否'
+  return String(v)
 }
 
 async function selectUnit(unitId: number) {
@@ -930,6 +962,21 @@ onMounted(async () => {
   display: flex;
   flex-direction: column;
   gap: 6px;
+}
+
+.search-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.search-row .el-input {
+  flex: 1;
+  min-width: 0;
+}
+
+.dim-val {
+  color: var(--fg-2);
+  font-size: 12px;
 }
 
 .dim-selects {

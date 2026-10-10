@@ -4,13 +4,16 @@
       <!-- 左栏：列表（可拖拽调宽） -->
       <div class="list-panel" :style="{ width: listWidth + 'px', flex: '0 0 ' + listWidth + 'px' }">
         <div class="list-filter">
-          <el-input
-            v-model="q"
-            placeholder="搜索文明名…"
-            size="small"
-            clearable
-            @input="filterRows"
-          />
+          <div class="search-row">
+            <el-input
+              v-model="q"
+              placeholder="搜索文明名…"
+              size="small"
+              clearable
+              @input="filterRows"
+            />
+            <ColumnPicker table-key="civs" :available="CIV_COLUMNS" title="定制显示列" />
+          </div>
           <div class="dim-selects">
             <el-select v-model="dim" size="small" placeholder="全部维度" @change="filterRows">
               <el-option value="" label="全部维度" />
@@ -50,6 +53,19 @@
                   <span>{{ row.display_name || row.name }}</span>
                   <span v-if="isRowModified(row.id)" class="row-dot" title="本次已修改"></span>
                 </span>
+              </template>
+            </el-table-column>
+            <el-table-column
+              v-for="c in civVisibleColumns"
+              :key="c.key"
+              :prop="c.key"
+              :label="c.label"
+              :width="c.width"
+              align="right"
+              show-overflow-tooltip
+            >
+              <template #default="{ row }">
+                <span class="mono dim-val">{{ fmtCell(row[c.key]) }}</span>
               </template>
             </el-table-column>
           </el-table>
@@ -190,8 +206,10 @@ import FieldControl from '../components/FieldControl.vue'
 import Field from '../components/Field.vue'
 import RelationPanel from '../components/RelationPanel.vue'
 import PatchFromChangesDialog from '../components/PatchFromChangesDialog.vue'
+import ColumnPicker from '../components/ColumnPicker.vue'
 import { useCopyPaste } from '../composables/useCopyPaste'
 import { usePanelResize } from '../composables/usePanelResize'
+import { useListColumns } from '../composables/useListColumns'
 
 const { listWidth, relationWidth, startResize } = usePanelResize()
 const cp = useCopyPaste('civs')
@@ -207,6 +225,22 @@ const q = ref('')
 const detail = ref<any>(null)
 const currentId = ref(-1)
 const effectItems = ref<{ value: number; label: string }[]>([])
+
+// 列表可定制列：值由后端 list_civs 返回
+const CIV_COLUMNS = [
+  { key: 'player_type', label: '玩家类型', width: 80 },
+  { key: 'icon_set', label: '图标集', width: 76 },
+  { key: 'tech_tree_id', label: '科技树', width: 80 },
+  { key: 'team_bonus_id', label: '团队加成', width: 80 },
+]
+const { visibleColumns: civVisibleColumns } = useListColumns('civs', CIV_COLUMNS)
+
+// 定制列单元格取值：布尔转「是/否」，null/undefined 显示空
+function fmtCell(v: unknown): string {
+  if (v === null || v === undefined) return ''
+  if (typeof v === 'boolean') return v ? '是' : '否'
+  return String(v)
+}
 
 function openCompare() {
   if (!detail.value) return
@@ -376,6 +410,21 @@ onMounted(async () => {
 .list-filter {
   padding: 8px 10px;
   border-bottom: 1px solid var(--line);
+}
+
+.search-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.search-row .el-input {
+  flex: 1;
+  min-width: 0;
+}
+
+.dim-val {
+  color: var(--fg-2);
+  font-size: 12px;
 }
 
 .dim-selects {

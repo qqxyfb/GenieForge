@@ -4,14 +4,17 @@
       <!-- 左栏：列表（可拖拽调宽） -->
       <div class="list-panel" :style="{ width: listWidth + 'px', flex: '0 0 ' + listWidth + 'px' }">
         <div class="list-filter">
-          <el-input
-            v-model="q"
-            placeholder="搜索效果名…"
-            size="small"
-            clearable
-            @keyup.enter="fetch"
-            @clear="fetch"
-          />
+          <div class="search-row">
+            <el-input
+              v-model="q"
+              placeholder="搜索效果名…"
+              size="small"
+              clearable
+              @keyup.enter="fetch"
+              @clear="fetch"
+            />
+            <ColumnPicker table-key="effects" :available="EFFECT_COLUMNS" title="定制显示列" />
+          </div>
           <div class="dim-selects">
             <span class="lbl">命令数</span>
             <el-input v-model="minCmds" placeholder="≥" size="small" clearable style="width: 64px" @keyup.enter="fetch" @clear="fetch" />
@@ -45,6 +48,19 @@
                 <span class="mono" style="color: var(--muted)">{{ row.commands }}</span>
               </template>
             </el-table-column>
+            <el-table-column
+              v-for="c in effectVisibleColumns"
+              :key="c.key"
+              :prop="c.key"
+              :label="c.label"
+              :width="c.width"
+              align="right"
+              show-overflow-tooltip
+            >
+              <template #default="{ row }">
+                <span class="mono dim-val">{{ fmtCell(row[c.key]) }}</span>
+              </template>
+            </el-table-column>
           </el-table>
         </div>
         <div class="list-foot">
@@ -54,6 +70,7 @@
             :page-sizes="[20, 50, 100, 200, 500]"
             :total="total"
             layout="sizes, prev, pager, next"
+            :pager-count="5"
             size="small"
             @current-change="fetch"
             @size-change="onPageSizeChange"
@@ -171,9 +188,11 @@ import EnumSelect from '../components/EnumSelect.vue'
 import FieldControl from '../components/FieldControl.vue'
 import RelationPanel from '../components/RelationPanel.vue'
 import PatchFromChangesDialog from '../components/PatchFromChangesDialog.vue'
+import ColumnPicker from '../components/ColumnPicker.vue'
 import Field from '../components/Field.vue'
 import { useCopyPaste } from '../composables/useCopyPaste'
 import { usePanelResize } from '../composables/usePanelResize'
+import { useListColumns } from '../composables/useListColumns'
 
 const { listWidth, relationWidth, startResize } = usePanelResize()
 const cp = useCopyPaste('effects')
@@ -195,6 +214,17 @@ const techItems = ref<{ value: number; label: string }[]>([])
 // 条件搜索：命令数区间
 const minCmds = ref('')
 const maxCmds = ref('')
+
+// 列表可定制列：值由后端 list_effects 返回（id/name/display_name/commands）
+const EFFECT_COLUMNS = [{ key: 'commands', label: '命令数', width: 72 }]
+const { visibleColumns: effectVisibleColumns } = useListColumns('effects', EFFECT_COLUMNS)
+
+// 定制列单元格取值：布尔转「是/否」，null/undefined 显示空
+function fmtCell(v: unknown): string {
+  if (v === null || v === undefined) return ''
+  if (typeof v === 'boolean') return v ? '是' : '否'
+  return String(v)
+}
 
 // 命令级剪贴板（模块级，跨效果共享）+ 多选/折叠状态
 const cmdClipboard = ref<any[]>([])
@@ -489,6 +519,21 @@ onMounted(async () => {
 .list-filter {
   padding: 8px 10px;
   border-bottom: 1px solid var(--line);
+}
+
+.search-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.search-row .el-input {
+  flex: 1;
+  min-width: 0;
+}
+
+.dim-val {
+  color: var(--fg-2);
+  font-size: 12px;
 }
 
 .dim-selects {

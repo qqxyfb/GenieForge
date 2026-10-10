@@ -71,6 +71,33 @@ def _overwrite_from_target(d, target, table: str, eid: int) -> None:
     dat_core.push_command(f"应用 {table}[{eid}]", undo, redo)
 
 
+def _apply_one(d, target, table: str, change: str, eid: int, changes: list | None) -> dict:
+    """应用单条变更记录（与 /apply-record 相同的核心逻辑，供单条与批量接口复用）。"""
+    if change in ("added", "removed"):
+        try:
+            _overwrite_from_target(d, target, table, eid)
+        except (IndexError, HTTPException) as exc:
+            raise HTTPException(400, f"应用失败: {exc}") from exc
+        return {"table": table, "id": eid, "change": change}
+
+    if change == "modified":
+        if not isinstance(changes, list):
+            raise HTTPException(400, "modified 需带 changes")
+        for ch in changes:
+            field = ch.get("field")
+            value = ch.get("new")
+            if field is None:
+                continue
+            dat_core.edit_field(
+                getattr(d, table)[eid], field, value,
+                f"{table}[{eid}].{field}",
+                meta={"table": table, "id": eid, "field": field},
+            )
+        return {"table": table, "id": eid, "change": change}
+
+    raise HTTPException(400, f"未知变化类型: {change}")
+
+
 @router.post("/apply-record")
 def apply_diff_record(body: dict):
     """一键应用一条变更记录。body: {table, change, id}
@@ -89,32 +116,34 @@ def apply_diff_record(body: dict):
     eid = body.get("id")
     if not isinstance(eid, int):
         raise HTTPException(400, "缺少 id")
+    _apply_one(d, target, table, change, eid, body.get("changes"))
+    return {"status": "ok", "table": table, "id": eid}
 
-    if change in ("added", "removed"):
-        try:
-            _overwrite_from_target(d, target, table, eid)
-        except (IndexError, HTTPException) as exc:
-            raise HTTPException(400, f"应用失败: {exc}") from exc
-        return {"status": "ok", "table": table, "id": eid}
 
-    if change == "modified":
-        changes = body.get("changes")
-        if not isinstance(changes, list):
-            raise HTTPException(400, "modified 需带 changes")
-        # 逐字段应用：从目标版本读该字段新值写回当前 dat
-        for ch in changes:
-            field = ch.get("field")
-            value = ch.get("new")
-            if field is None:
-                continue
-            dat_core.edit_field(
-                getattr(d, table)[eid], field, value,
-                f"{table}[{eid}].{field}",
-                meta={"table": table, "id": eid, "field": field},
-            )
-        return {"status": "ok", "table": table, "id": eid}
+@router.post("/apply-records")
+def apply_diff_records(body: dict):
+    """批量应用多条变更记录。body: {records: [{table, change, id, changes?}]}
 
-    raise HTTPException(400, f"未知变化类型: {change}")
+    逐条复用单条应用逻辑（added/removed 覆盖、modified 逐字段），
+    全部成功则返回应用数量；任一失败则抛错（已应用的保留在命令栈，可撤销）。
+    """
+    d = require_dat().get()
+    try:
+        target = diff_loader.get()
+    except RuntimeError as exc:
+        raise HTTPException(400, "请先选择对比版本") from exc
+    records = body.get("records")
+    if not isinstance(records, list) or not records:
+        raise HTTPException(400, "缺少 records")
+    applied = []
+    for rec in records:
+        eid = rec.get("id")
+        if not isinstance(eid, int):
+            raise HTTPException(400, "记录缺少 id")
+        applied.append(_apply_one(
+            d, target, rec.get("table"), rec.get("change"), eid, rec.get("changes")
+        ))
+    return {"status": "ok", "count": len(applied), "applied": applied}
 
 
 @router.get("/{job_id}")

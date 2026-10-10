@@ -52,14 +52,48 @@
     <!-- 变更记录 -->
     <el-card v-if="report" shadow="never" class="records-card">
       <template #header>
-        变更记录
-        <el-tag size="small" type="success" style="margin-left: 6px">新增 {{ report.summary.added }}</el-tag>
-        <el-tag size="small" type="danger" style="margin-left: 6px">删除 {{ report.summary.removed }}</el-tag>
-        <el-tag size="small" type="warning" style="margin-left: 6px">修改 {{ report.summary.modified }}</el-tag>
-        <el-tag size="small" type="info" style="margin-left: 6px">ID 漂移 {{ report.summary.id_drift }}</el-tag>
+        <div class="records-head">
+          <span>变更记录</span>
+          <el-tag size="small" type="success">新增 {{ report.summary.added }}</el-tag>
+          <el-tag size="small" type="danger">删除 {{ report.summary.removed }}</el-tag>
+          <el-tag size="small" type="warning">修改 {{ report.summary.modified }}</el-tag>
+          <el-tag size="small" type="info">ID 漂移 {{ report.summary.id_drift }}</el-tag>
+          <span class="records-head-tools">
+            <el-select v-model="filterTable" size="small" placeholder="表类别" clearable style="width: 96px">
+              <el-option v-for="t in filterTables" :key="t.key" :value="t.key" :label="t.label" />
+            </el-select>
+            <el-select v-model="filterChange" size="small" placeholder="变化类型" clearable style="width: 96px">
+              <el-option value="added" label="新增" />
+              <el-option value="removed" label="删除" />
+              <el-option value="modified" label="修改" />
+            </el-select>
+            <el-input
+              v-model="filterName"
+              size="small"
+              placeholder="按名称筛选"
+              clearable
+              style="width: 140px"
+            />
+            <el-button
+              v-if="selectedRecords.length"
+              size="small"
+              type="primary"
+              @click="applySelected"
+            >
+              批量应用 ({{ selectedRecords.length }})
+            </el-button>
+          </span>
+        </div>
       </template>
       <div class="records-body">
-        <el-table :data="paginatedRecords" size="small" border height="100%">
+        <el-table
+          :data="paginatedRecords"
+          size="small"
+          border
+          height="100%"
+          @selection-change="onSelectionChange"
+        >
+        <el-table-column type="selection" width="34" />
         <el-table-column type="expand">
           <template #default="{ row }">
             <el-table v-if="row.change === 'modified'" :data="row.changes" size="small" border>
@@ -125,7 +159,7 @@
           v-model:current-page="recPage"
           v-model:page-size="recPageSize"
           :page-sizes="[20, 50, 100, 200]"
-          :total="records.length"
+          :total="filteredRecords.length"
           layout="sizes, prev, pager, next, total"
           size="small"
         />
@@ -177,15 +211,48 @@ const targetFile = computed({
 
 const records = computed(() => report.value?.records ?? [])
 
+// 变更记录筛选：表类别 / 变化类型 / 名称
+const filterTable = ref('')
+const filterChange = ref('')
+const filterName = ref('')
+// 表别名映射（diff 记录里单位表名为 unit_headers，显示为「单位」）
+const TABLE_ALIAS: Record<string, string> = { unit_headers: 'units' }
+const filterTables = [
+  { key: 'techs', label: '科技' },
+  { key: 'unit_headers', label: '单位' },
+  { key: 'civs', label: '文明' },
+  { key: 'effects', label: '效果' },
+]
+const filteredRecords = computed(() => {
+  let list: any[] = records.value
+  if (filterTable.value) {
+    list = list.filter((r: any) => r.table === filterTable.value)
+  }
+  if (filterChange.value) {
+    list = list.filter((r: any) => r.change === filterChange.value)
+  }
+  if (filterName.value) {
+    const ql = filterName.value.toLowerCase()
+    list = list.filter((r: any) => (r.name || '').toLowerCase().includes(ql))
+  }
+  return list
+})
+
+// 多选（复选框 + shift 范围选择由 el-table selection 列提供）
+const selectedRecords = ref<any[]>([])
+function onSelectionChange(rows: any[]) {
+  selectedRecords.value = rows
+}
+
 // 变更记录分页
 const recPage = ref(1)
 const recPageSize = ref(50)
 const paginatedRecords = computed(() => {
   const start = (recPage.value - 1) * recPageSize.value
-  return records.value.slice(start, start + recPageSize.value)
+  return filteredRecords.value.slice(start, start + recPageSize.value)
 })
-// 记录总数变化时回到第一页
-watch(records, () => { recPage.value = 1 })
+// 记录总数或筛选条件变化时回到第一页
+watch([records, filterTable, filterChange, filterName], () => { recPage.value = 1 })
 
 // 差异详情子弹窗（改用 EntityCompare 组件，不再用 iframe）
 const detailVisible = ref(false)
@@ -197,7 +264,8 @@ const detailTitle = ref('')
 
 function tableLabel(t: string | number): string {
   const s = String(t)
-  return (TABLE_LABELS as Record<string, string>)[s] || s
+  const key = TABLE_ALIAS[s] || s
+  return (TABLE_LABELS as Record<string, string>)[key] || key
 }
 
 function changeLabel(c: string): string {
@@ -342,6 +410,38 @@ async function applyRecord(row: any) {
   }
 }
 
+// 批量应用选中的变更记录（added/removed 覆盖、modified 逐字段）
+async function applySelected() {
+  const rows = selectedRecords.value
+  if (!rows.length) return ElMessage.warning('请先勾选变更记录')
+  try {
+    await ElMessageBox.confirm(
+      `批量应用选中的 ${rows.length} 条变更记录？`,
+      '确认',
+      { type: 'warning' }
+    )
+  } catch {
+    return
+  }
+  try {
+    const payload = rows.map((r) => ({
+      table: r.table,
+      change: r.change,
+      id: r.id,
+      changes: r.changes,
+    }))
+    const res: any = await api.diffApplyRecords(payload)
+    ElMessage.success(`已应用 ${res.count} 条记录`)
+    selectedRecords.value = []
+    // 应用后重新对比，刷新变更记录
+    if (versionId.value != null) {
+      diffState.report = await api.diffAgainstVersion(versionId.value)
+    }
+  } catch (e: any) {
+    ElMessage.error(e.message)
+  }
+}
+
 async function generatePatch() {
   if (versionId.value == null) return ElMessage.warning('请先选择对比版本')
   try {
@@ -384,6 +484,17 @@ onMounted(loadVersions)
   display: flex;
   flex-direction: column;
   min-height: 0;
+}
+.records-head {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.records-head-tools {
+  margin-left: auto;
+  display: flex;
+  align-items: center;
+  gap: 6px;
 }
 .records-card :deep(.el-card__body) {
   flex: 1;

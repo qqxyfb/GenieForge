@@ -4,14 +4,17 @@
       <!-- 左栏：列表（可拖拽调宽） -->
       <div class="list-panel" :style="{ width: listWidth + 'px', flex: '0 0 ' + listWidth + 'px' }">
         <div class="list-filter">
-          <el-input
-            v-model="q"
-            placeholder="搜索科技名…"
-            size="small"
-            clearable
-            @keyup.enter="fetch"
-            @clear="fetch"
-          />
+          <div class="search-row">
+            <el-input
+              v-model="q"
+              placeholder="搜索科技名…"
+              size="small"
+              clearable
+              @keyup.enter="fetch"
+              @clear="fetch"
+            />
+            <ColumnPicker table-key="techs" :available="TECH_COLUMNS" title="定制显示列" />
+          </div>
           <div class="dim-selects">
             <el-select v-model="dim" size="small" placeholder="全部维度" @change="fetch">
               <el-option value="" label="全部维度" />
@@ -71,6 +74,19 @@
               </template>
             </el-table-column>
             <el-table-column prop="display_name" label="显示名" width="90" show-overflow-tooltip />
+            <el-table-column
+              v-for="c in techVisibleColumns"
+              :key="c.key"
+              :prop="c.key"
+              :label="c.label"
+              :width="c.width"
+              align="right"
+              show-overflow-tooltip
+            >
+              <template #default="{ row }">
+                <span class="mono dim-val">{{ fmtCell(row[c.key]) }}</span>
+              </template>
+            </el-table-column>
           </el-table>
         </div>
         <div class="list-foot">
@@ -80,6 +96,7 @@
             :page-sizes="[20, 50, 100, 200, 500]"
             :total="total"
             layout="sizes, prev, pager, next"
+            :pager-count="5"
             size="small"
             @current-change="fetch"
             @size-change="onPageSizeChange"
@@ -292,8 +309,10 @@ import SubTable from '../components/SubTable.vue'
 import Field from '../components/Field.vue'
 import RelationPanel from '../components/RelationPanel.vue'
 import PatchFromChangesDialog from '../components/PatchFromChangesDialog.vue'
+import ColumnPicker from '../components/ColumnPicker.vue'
 import { useCopyPaste } from '../composables/useCopyPaste'
 import { usePanelResize } from '../composables/usePanelResize'
+import { useListColumns } from '../composables/useListColumns'
 
 const { listWidth, relationWidth, startResize } = usePanelResize()
 const cp = useCopyPaste('techs')
@@ -320,6 +339,15 @@ const dims = [
 ]
 const dim = ref('')
 const dimValue = ref('')
+
+// 列表可定制列：值由后端 list_techs（_summarize）返回
+const TECH_COLUMNS = [
+  { key: 'type', label: '类型', width: 76 },
+  { key: 'civ', label: '文明', width: 64 },
+  { key: 'effect_id', label: '效果', width: 76 },
+  { key: 'icon_id', label: '图标', width: 76 },
+]
+const { visibleColumns: techVisibleColumns } = useListColumns('techs', TECH_COLUMNS)
 
 // 引用筛选：direction:ref_table 组合 + 目标 id
 const refFilter = ref('')
@@ -532,6 +560,13 @@ watch(
   }
 )
 
+// 定制列单元格取值：布尔转「是/否」，null/undefined 显示空
+function fmtCell(v: unknown): string {
+  if (v === null || v === undefined) return ''
+  if (typeof v === 'boolean') return v ? '是' : '否'
+  return String(v)
+}
+
 // 撤销、重做、应用补丁后刷新当前选中条目详情和列表当前页
 watch(
   () => appStore.dataRevision,
@@ -580,6 +615,21 @@ onMounted(async () => {
 .list-filter {
   padding: 8px 10px;
   border-bottom: 1px solid var(--line);
+}
+
+.search-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.search-row .el-input {
+  flex: 1;
+  min-width: 0;
+}
+
+.dim-val {
+  color: var(--fg-2);
+  font-size: 12px;
 }
 
 .dim-selects {

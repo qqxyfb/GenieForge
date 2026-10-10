@@ -115,16 +115,17 @@ body,
 .el-pagination {
   flex-wrap: nowrap;
   justify-content: center;
+  --el-pagination-item-gap: 6px; /* 缩小元素间距，配合 pager-count=5 让分页栏放得下 */
 }
 .el-pagination__sizes {
   margin-right: 6px;
 }
 .el-pagination__sizes .el-select {
-  width: 84px !important;
+  width: 72px !important;
 }
 .el-pagination__sizes .el-select .el-select__wrapper {
-  padding-left: 6px;
-  padding-right: 6px;
+  padding-left: 4px;
+  padding-right: 4px;
   min-height: 22px;
 }
 .el-pagination .btn-prev,
@@ -136,6 +137,7 @@ body,
   min-width: 22px;
   height: 22px;
   line-height: 22px;
+  padding: 0 3px;
 }
 
 /* 分页栏容器：超出时不溢出边界 */

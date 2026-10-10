@@ -137,12 +137,19 @@
 - **修复**：`DiffView.vue` 卡片改 `records-card`（flex 列、`flex:1` 自适应剩余高度），`el-table` 外层包 `records-body`（`flex:1` + `min-height:0`）用 `height=100%` 填充；`records-foot` 分页栏固定底部。
 - **分页**：变更记录新增 `recPage`/`recPageSize`/`paginatedRecords`，默认每页 50，支持 20/50/100/200；`records` 变化时 watch 回第 1 页。
 
-### 22. ⏳ 数据页 / 对比变更记录列表支持定制列
-- 需求：单位页等列表可定制展示「类型、类别、ID」等搜索维度相关列，便于直观看到实体属性。
-- 待分析：列定义复用 `compare/fields.ts` FIELDS 与搜索维度；需支持用户勾选显示哪些列、列宽、顺序（可能存 localStorage）。
+### 22. ✅ 数据页 / 对比变更记录列表支持定制列（2026-10-10）
+- **需求**：单位页等列表可定制展示「类型、类别、ID」等搜索维度相关列，便于直观看到实体属性。
+- **实现**：
+  - 新增 `composables/useListColumns.ts`（module 级单例按表名缓存，勾选状态 + 顺序持久化到 localStorage `genieforge.columns.<table>`）；
+  - 新增 `components/ColumnPicker.vue`（「列」按钮弹层：勾选 / 上移下移排序 / 重置）；
+  - 四个数据页（科技/单位/文明/效果）列表搜索栏加「列」按钮，el-table 按勾选顺序动态渲染列（等宽字体右对齐、布尔转「是/否」）。
+  - 单位页复用 37 个搜索维度作为可选列；科技页 type/civ/effect_id/icon_id；文明页 player_type/icon_set/tech_tree_id/team_bonus_id；效果页命令数。
 
-### 23. ⏳ 对比页变更记录：多选应用 + 框选 + 筛选（需详细分析）
-- 需求：
-  1. 变更记录支持多选（复选框 + 框选，类似效果命令卡片）批量应用；
-  2. 增加筛选：按搜索条件维度、名称、表类别等过滤。
-- 待详细分析：批量应用 added/removed 的幂等与顺序、modified 逐字段合并；筛选与 diff 报告的字段联动。
+### 23. ✅ 对比页变更记录：多选应用 + 筛选（2026-10-10）
+- **需求**：
+  1. 变更记录支持多选（复选框 + shift 范围选择）批量应用；
+  2. 增加筛选：按表类别、变化类型、名称过滤。
+- **实现**：
+  - 后端 `diff.py` 抽 `_apply_one` 复用单条逻辑，新增 `POST /api/diff/apply-records`（批量应用，逐条复用 added/removed 覆盖、modified 逐字段）；
+  - 前端 `DiffView.vue`：变更记录表加 selection 列 + 「批量应用」按钮（有勾选时显示）；header 加表类别/变化类型/名称三个筛选控件；分页基于筛选后结果。
+  - 表名别名：diff 记录里单位表名为 `unit_headers`，显示映射为「单位」。
