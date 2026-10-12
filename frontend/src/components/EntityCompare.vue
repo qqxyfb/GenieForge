@@ -397,11 +397,20 @@ const isAdded = computed(() => props.baseId === null)
 const isRemoved = computed(() => props.targetId === null)
 
 function fmtBase(f: ScalarField): string {
-  return base.value ? fmt(base.value[f.key]) : '（无此条目）'
+  return base.value ? fmt(displayValue(base.value, f)) : '（无此条目）'
 }
 
 function fmtTarget(f: ScalarField): string {
-  return target.value ? fmt(target.value[f.key]) : '（无此条目）'
+  return target.value ? fmt(displayValue(target.value, f)) : '（无此条目）'
+}
+
+// 效果表的 name 字段在中文 dat 里是 GBK 乱码，展示用 display_name（英文内部名），
+// 编辑/应用仍用原始 name 保证字节级无损写回。
+function displayValue(detail: any, f: ScalarField): unknown {
+  if (table.value === 'effects' && f.key === 'name' && detail?.display_name) {
+    return detail.display_name
+  }
+  return detail?.[f.key]
 }
 
 watch(

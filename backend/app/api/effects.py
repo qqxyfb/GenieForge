@@ -31,7 +31,12 @@ def list_effects(
     ]
     if q:
         ql = q.lower()
-        items = [x for x in items if ql in (x["name"] or "").lower() or ql in str(x["id"])]
+        items = [
+            x for x in items
+            if ql in (x["name"] or "").lower()
+            or ql in (x["display_name"] or "").lower()
+            or ql in str(x["id"])
+        ]
     if min_cmds is not None:
         items = [x for x in items if x["commands"] >= min_cmds]
     if max_cmds is not None:

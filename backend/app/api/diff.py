@@ -8,6 +8,7 @@ from ... import metadata
 from ..core import diff as diff_engine
 from ..core.dat_core import dat_core
 from ..core.diff_loader import diff_loader
+from ..core.names import name_resolver
 from ..core.subtable import rows_to_dicts
 from ..core.version import version_store
 from ..deps import require_dat
@@ -212,6 +213,7 @@ def _effect_detail(d, effect_id: int) -> dict:
     e = d.effects[effect_id]
     return {
         "id": effect_id, "name": e.name,
+        "display_name": name_resolver.resolve_effect(e, effect_id)["display"],
         "effect_commands": rows_to_dicts(e.effect_commands),
     }
 

@@ -9,6 +9,8 @@
 
 from typing import Optional
 
+from ... import metadata
+
 
 def restore_dat_name(s: Optional[str]) -> Optional[str]:
     """把 latin-1 字节透传得到的字符串还原为 GBK 中文（用于显示）。
@@ -87,7 +89,19 @@ class NameResolver:
         return r
 
     def resolve_effect(self, effect, effect_id: int) -> dict:
-        return self.resolve(effect, effect_id)
+        """效果显示名：始终英文内部名。
+
+        effects 表没有 language_dll_name 字段，决定版中文 dat 里 name 直接存
+        GBK 中文（被 latin-1 解码成乱码）。这里查英文名表把中文乱码映射回英文
+        内部名；英文 dat 的 name 本身就是英文，原样返回。
+        """
+        name = getattr(effect, "name", None)
+        display = name
+        if name and any(ord(c) > 127 for c in name):
+            en = metadata.effect_en_name(effect_id)
+            if en:
+                display = en
+        return {"internal": name, "display": display, "id": effect_id}
 
     def resolve_civ(self, civ, civ_id: int) -> dict:
         return self.resolve(civ, civ_id)

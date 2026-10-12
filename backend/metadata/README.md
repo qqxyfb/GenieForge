@@ -12,6 +12,7 @@
 | `terrain_tables.json` | 地形表 |
 | `unit_types.json` | 单位类型 |
 | `tech_types.json` | 科技类型 |
+| `effect_names_en.json` | 效果英文内部名（索引 → 英文名，从标准英文 dat 提取，供中文 dat 显示英文名） |
 
 这些表最初从 Advanced Genie Editor（AGE）的 `AGE3Names*.ini` 提取。需要重新提取时运行：
 

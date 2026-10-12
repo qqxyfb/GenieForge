@@ -8,6 +8,7 @@
 
 from pathlib import Path
 
+from ... import metadata
 from .names import restore_dat_name
 
 # 各表参与对比的字段（可控、高效，避免对巨型嵌套对象做全量递归）
@@ -74,6 +75,15 @@ def _plain(v):
     return repr(v)
 
 
+def _effect_name(table: str, idx: int, name) -> str:
+    """diff 记录中效果名称的显示值：中文 dat 的 name 是 GBK 乱码，映射回英文内部名。"""
+    if table == "effects" and name and any(ord(c) > 127 for c in name):
+        en = metadata.effect_en_name(idx)
+        if en:
+            return en
+    return restore_dat_name(name)
+
+
 def _fingerprint(obj, table: str) -> str:
     import hashlib
 
@@ -85,12 +95,17 @@ def _fingerprint(obj, table: str) -> str:
     return h.hexdigest()
 
 
-def _field_diff(a, b, table: str) -> list[dict]:
+def _field_diff(a, b, table: str, idx_a: int = 0, idx_b: int = 0) -> list[dict]:
     changes = []
     for field in _COMPARE_FIELDS[table]:
         if not hasattr(a, field) or not hasattr(b, field):
             continue
-        va, vb = _plain(getattr(a, field)), _plain(getattr(b, field))
+        # effects 的 name 字段用英文内部名（中文 dat 的 name 是 GBK 乱码）
+        if table == "effects" and field == "name":
+            va = _effect_name(table, idx_a, getattr(a, field))
+            vb = _effect_name(table, idx_b, getattr(b, field))
+        else:
+            va, vb = _plain(getattr(a, field)), _plain(getattr(b, field))
         if va != vb:
             changes.append({"field": field, "old": va, "new": vb})
     return changes
@@ -102,15 +117,19 @@ def _name_map(d, table: str) -> dict:
         key = getattr(obj, "name", None)
         if key is None:
             key = f"<{table}#{i}>"
-        # 还原 latin-1 → GBK（决定版中文 dat 的效果 name 直接存中文，避免乱码）
-        key = restore_dat_name(key)
+        # effects 用英文内部名（中文 dat 的 name 是 GBK 乱码）；其余 latin-1 → GBK 还原
+        key = _effect_name(table, i, key)
         m.setdefault(key, []).append(i)
     return m
 
 
-def _plain_row(obj, table: str) -> dict:
+def _plain_row(obj, table: str, idx: int = 0) -> dict:
     """单条记录的可读详情（供前端展开显示新增/删除的完整字段）。"""
-    return {f: _plain(getattr(obj, f)) for f in _COMPARE_FIELDS[table] if hasattr(obj, f)}
+    out = {f: _plain(getattr(obj, f)) for f in _COMPARE_FIELDS[table] if hasattr(obj, f)}
+    # effects 的 name 字段用英文内部名（中文 dat 的 name 是 GBK 乱码）
+    if table == "effects" and "name" in out:
+        out["name"] = _effect_name(table, idx, getattr(obj, "name", None))
+    return out
 
 
 def _diff_objects(a, b) -> dict:
@@ -136,7 +155,7 @@ def _diff_objects(a, b) -> dict:
                     "name": n,
                     "change": "added",
                     "id": nb[n][0],
-                    "record": _plain_row(objs_b[nb[n][0]], table),
+                    "record": _plain_row(objs_b[nb[n][0]], table, nb[n][0]),
                 }
             )
         for n in sorted(na.keys() - nb.keys()):
@@ -146,7 +165,7 @@ def _diff_objects(a, b) -> dict:
                     "name": n,
                     "change": "removed",
                     "id": na[n][0],
-                    "record": _plain_row(objs_a[na[n][0]], table),
+                    "record": _plain_row(objs_a[na[n][0]], table, na[n][0]),
                 }
             )
 
@@ -157,7 +176,7 @@ def _diff_objects(a, b) -> dict:
                     {"table": table, "name": n, "base_id": ia, "target_id": ib}
                 )
             if _fingerprint(objs_a[ia], table) != _fingerprint(objs_b[ib], table):
-                changes = _field_diff(objs_a[ia], objs_b[ib], table)
+                changes = _field_diff(objs_a[ia], objs_b[ib], table, ia, ib)
                 report["records"].append(
                     {
                         "table": table,
