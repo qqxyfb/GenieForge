@@ -44,7 +44,12 @@ def list_effects(
 def list_effect_names():
     """全量效果名称（供效果引用下拉）。"""
     d = require_dat().get()
-    return {"items": [{"id": i, "name": e.name} for i, e in enumerate(d.effects)]}
+    return {
+        "items": [
+            {"id": i, "name": name_resolver.resolve_effect(e, i)["display"], "raw_name": e.name}
+            for i, e in enumerate(d.effects)
+        ]
+    }
 
 
 @router.get("/{effect_id}")

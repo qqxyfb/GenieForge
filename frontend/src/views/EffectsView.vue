@@ -38,7 +38,7 @@
             <el-table-column prop="name" label="名称" show-overflow-tooltip>
               <template #default="{ row }">
                 <span class="row-name-cell">
-                  <span>{{ row.name }}</span>
+                  <span>{{ row.display_name || row.name }}</span>
                   <span v-if="isRowModified(row.id)" class="row-dot" title="本次已修改"></span>
                 </span>
               </template>
@@ -87,7 +87,7 @@
         <div class="entity-header">
           <div class="entity-meta">
             <span class="mono entity-id">#{{ detail.id }}</span>
-            <h3 class="entity-title">{{ detail.name }}</h3>
+            <h3 class="entity-title">{{ detail.display_name || detail.name }}</h3>
           </div>
           <div class="entity-actions">
             <el-button size="small" @click="openCompare">对比…</el-button>

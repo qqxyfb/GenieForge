@@ -8,6 +8,8 @@
 
 from pathlib import Path
 
+from .names import restore_dat_name
+
 # 各表参与对比的字段（可控、高效，避免对巨型嵌套对象做全量递归）
 _COMPARE_FIELDS = {
     "techs": [
@@ -58,7 +60,9 @@ def _fields_of(obj) -> dict:
 
 def _plain(v):
     """递归转成纯 Python 结构（可哈希 / 可比较 / 可 JSON）。"""
-    if isinstance(v, (int, float, str, bool)) or v is None:
+    if isinstance(v, str):
+        return restore_dat_name(v)
+    if isinstance(v, (int, float, bool)) or v is None:
         return v
     if isinstance(v, (list, tuple)):
         return [_plain(x) for x in v]
@@ -98,6 +102,8 @@ def _name_map(d, table: str) -> dict:
         key = getattr(obj, "name", None)
         if key is None:
             key = f"<{table}#{i}>"
+        # 还原 latin-1 → GBK（决定版中文 dat 的效果 name 直接存中文，避免乱码）
+        key = restore_dat_name(key)
         m.setdefault(key, []).append(i)
     return m
 

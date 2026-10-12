@@ -10,6 +10,30 @@
 from typing import Optional
 
 
+def restore_dat_name(s: Optional[str]) -> Optional[str]:
+    """把 latin-1 字节透传得到的字符串还原为 GBK 中文（用于显示）。
+
+    ``genieutils_fix`` 为「字节级无损」用 latin-1 解码 dat 字符串，导致决定版
+    中文 dat 里的 GBK 中文名（如效果表 ``name`` 字段直接存中文）被拆成乱码
+    （「城镇瞭望」→ ``³ÇÕò²tÍû``）。本函数在显示前还原：
+
+    - 纯 ASCII（英文内部名）原样返回；
+    - 含高位字节时按 latin-1 → GBK 还原，仅当还原结果含 CJK 才采用，
+      否则原样返回（避免误伤真正的 latin-1 字符如 ``é``）。
+    """
+    if not s or not isinstance(s, str):
+        return s
+    if all(ord(c) < 128 for c in s):
+        return s
+    try:
+        restored = s.encode("latin-1").decode("gbk")
+    except (UnicodeDecodeError, UnicodeEncodeError):
+        return s
+    if any("\u4e00" <= c <= "\u9fff" for c in restored):
+        return restored
+    return s
+
+
 class NameResolver:
     """维护语言表（id → 显示名），并提供各实体类型的名称解析。"""
 
@@ -45,7 +69,7 @@ class NameResolver:
             return self._lang[sid]
         name = getattr(obj, "name", None)
         if name:
-            return name
+            return restore_dat_name(name)
         return f"#{entity_id}" if entity_id is not None else None
 
     def resolve(self, obj, entity_id: Optional[int] = None) -> dict:
