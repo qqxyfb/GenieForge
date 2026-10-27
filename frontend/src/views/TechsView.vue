@@ -174,9 +174,11 @@
           <div class="grid4">
             <Field
               label="Effect"
+              :value="detail.effect_id"
               :modified="isFieldModified('effect_id')"
               :original-value="getOriginalValue('effect_id')"
               @revert="revertField('effect_id')"
+              @commit="(v) => save('effect_id', v)"
             >
               <div class="jump-wrap">
                 <EnumSelect :preloaded="effectItems" :model-value="detail.effect_id" @change="(v) => save('effect_id', v)" />
@@ -185,17 +187,21 @@
             </Field>
             <Field
               label="Full Tech Mode"
+              :value="detail.full_tech_mode"
               :modified="isFieldModified('full_tech_mode')"
               :original-value="getOriginalValue('full_tech_mode')"
               @revert="revertField('full_tech_mode')"
+              @commit="(v) => save('full_tech_mode', v)"
             >
               <FieldControl type="number" :model-value="detail.full_tech_mode" @commit="(v) => save('full_tech_mode', v)" />
             </Field>
             <Field
               label="Icon ID"
+              :value="detail.icon_id"
               :modified="isFieldModified('icon_id')"
               :original-value="getOriginalValue('icon_id')"
               @revert="revertField('icon_id')"
+              @commit="(v) => save('icon_id', v)"
             >
               <FieldControl type="number" :model-value="detail.icon_id" @commit="(v) => save('icon_id', v)" />
             </Field>
@@ -205,33 +211,41 @@
           <div class="grid4">
             <Field
               label="Lang Name"
+              :value="detail.language_dll_name"
               :modified="isFieldModified('language_dll_name')"
               :original-value="getOriginalValue('language_dll_name')"
               @revert="revertField('language_dll_name')"
+              @commit="(v) => save('language_dll_name', v)"
             >
               <FieldControl type="number" :model-value="detail.language_dll_name" @commit="(v) => save('language_dll_name', v)" />
             </Field>
             <Field
               label="Description"
+              :value="detail.language_dll_description"
               :modified="isFieldModified('language_dll_description')"
               :original-value="getOriginalValue('language_dll_description')"
               @revert="revertField('language_dll_description')"
+              @commit="(v) => save('language_dll_description', v)"
             >
               <FieldControl type="number" :model-value="detail.language_dll_description" @commit="(v) => save('language_dll_description', v)" />
             </Field>
             <Field
               label="Help"
+              :value="detail.language_dll_help"
               :modified="isFieldModified('language_dll_help')"
               :original-value="getOriginalValue('language_dll_help')"
               @revert="revertField('language_dll_help')"
+              @commit="(v) => save('language_dll_help', v)"
             >
               <FieldControl type="number" :model-value="detail.language_dll_help" @commit="(v) => save('language_dll_help', v)" />
             </Field>
             <Field
               label="Tech Tree"
+              :value="detail.language_dll_tech_tree"
               :modified="isFieldModified('language_dll_tech_tree')"
               :original-value="getOriginalValue('language_dll_tech_tree')"
               @revert="revertField('language_dll_tech_tree')"
+              @commit="(v) => save('language_dll_tech_tree', v)"
             >
               <FieldControl type="number" :model-value="detail.language_dll_tech_tree" @commit="(v) => save('language_dll_tech_tree', v)" />
             </Field>
@@ -243,9 +257,11 @@
               v-for="(rt, i) in detail.required_techs"
               :key="i"
               :label="`前置 ${i}`"
+              :value="rt"
               :modified="isFieldModified(`required_techs.${i}`)"
               :original-value="getOriginalValue(`required_techs.${i}`)"
               @revert="revertField(`required_techs.${i}`)"
+              @commit="(v) => save(`required_techs.${i}`, v)"
             >
               <EnumSelect :preloaded="techItems" :model-value="rt" @change="(v) => save(`required_techs.${i}`, v)" />
             </Field>
@@ -257,9 +273,11 @@
               <EnumSelect meta-name="resource-types" :model-value="rc.type" @change="(v) => save(`resource_costs.${i}.type`, v)" />
               <Field
                 :label="`数量 ${i}`"
+                :value="rc.amount"
                 :modified="isFieldModified(`resource_costs.${i}.amount`)"
                 :original-value="getOriginalValue(`resource_costs.${i}.amount`)"
                 @revert="revertField(`resource_costs.${i}.amount`)"
+                @commit="(v) => save(`resource_costs.${i}.amount`, v)"
               >
                 <FieldControl type="number" :model-value="rc.amount" @commit="(v) => save(`resource_costs.${i}.amount`, v)" />
               </Field>
@@ -738,23 +756,6 @@ onMounted(async () => {
   flex: 1;
   overflow-y: auto;
   padding: 14px 18px 30px;
-}
-
-.group-title {
-  color: #e6a84a;
-  font-weight: 700;
-  font-size: 12px;
-  letter-spacing: 0.06em;
-  text-transform: uppercase;
-  border-left: 3px solid var(--gold);
-  background: linear-gradient(90deg, rgba(224, 164, 58, 0.12), rgba(224, 164, 58, 0));
-  padding: 5px 10px;
-  margin: 18px 0 10px;
-  border-radius: 2px;
-}
-
-.group-title:first-child {
-  margin-top: 0;
 }
 
 .grid4 {

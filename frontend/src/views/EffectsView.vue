@@ -102,9 +102,11 @@
           <div class="grid1">
             <Field
               label="Effect Name"
+              :value="detail.name"
               :modified="isFieldModified('name')"
               :original-value="getOriginalValue('name')"
               @revert="revertField('name')"
+              @commit="(v) => save('name', v)"
             >
               <FieldControl type="text" :model-value="detail.name" @commit="(v) => save('name', v)" />
             </Field>
@@ -146,7 +148,7 @@
               <span class="cmd-del" title="删除命令" @click="removeCmd(i)">✕</span>
             </div>
             <div class="cmd-params" v-show="!collapsedCmds.includes(i)">
-              <Field v-for="p in ec.params || []" :key="p.key" :label="p.label">
+              <Field v-for="p in ec.params || []" :key="p.key" :label="p.label" :value="ec[p.key]" @commit="(v) => saveCmd(i, p.key, v)">
                 <EnumSelect v-if="p.type === 'unit'" :preloaded="unitItems" :model-value="ec[p.key]" @change="(v) => saveCmd(i, p.key, v)" />
                 <EnumSelect v-else-if="p.type === 'tech'" :preloaded="techItems" :model-value="ec[p.key]" @change="(v) => saveCmd(i, p.key, v)" />
                 <EnumSelect v-else-if="p.type === 'armor'" meta-name="armors" :model-value="ec[p.key]" @change="(v) => saveCmd(i, p.key, v)" />
@@ -641,16 +643,6 @@ onMounted(async () => {
 }
 
 .group-title {
-  color: #e6a84a;
-  font-weight: 700;
-  font-size: 12px;
-  letter-spacing: 0.06em;
-  text-transform: uppercase;
-  border-left: 3px solid var(--gold);
-  background: linear-gradient(90deg, rgba(224, 164, 58, 0.12), rgba(224, 164, 58, 0));
-  padding: 5px 10px;
-  margin: 18px 0 10px;
-  border-radius: 2px;
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -660,10 +652,6 @@ onMounted(async () => {
   display: flex;
   gap: 6px;
   align-items: center;
-}
-
-.group-title:first-child {
-  margin-top: 0;
 }
 
 .grid1 {

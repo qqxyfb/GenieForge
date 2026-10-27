@@ -4,6 +4,7 @@
 """
 
 import logging
+import threading
 from pathlib import Path
 
 from fastapi import APIRouter, HTTPException
@@ -32,6 +33,66 @@ def _try_load_language() -> int:
         return name_resolver.load_language_file(str(path))
     except Exception:  # noqa: BLE001
         return 0
+
+
+# 异步加载进度状态（供 /load-async + /load-status 使用）。
+# 因为 genieutils 的 DatFile.parse 是单次阻塞调用（约 12.8s）无法细分百分比，
+# 这里按「阶段」汇报进度，parse 阶段由前端显示不确定进度。
+_load_state: dict = {"status": "idle", "stage": "", "message": "", "error": None, "info": None}
+_load_lock = threading.Lock()
+
+
+def _set_load_state(**kw) -> None:
+    with _load_lock:
+        _load_state.update(kw)
+
+
+def _get_load_state() -> dict:
+    with _load_lock:
+        return dict(_load_state)
+
+
+def _progress_cb(stage: str, message: str) -> None:
+    _set_load_state(stage=stage, message=message)
+
+
+def _run_load(path: str) -> None:
+    try:
+        _set_load_state(status="loading", stage="checking", message="检查文件…", error=None, info=None)
+        info = dat_core.load(path, progress=_progress_cb)
+        _set_load_state(stage="indexing", message="构建引用索引…")
+        try:
+            ref_index.build()
+            unit_index.build()
+        except Exception:  # noqa: BLE001
+            pass
+        _set_load_state(stage="language", message="加载语言文件…")
+        lang_count = _try_load_language()
+        _set_load_state(
+            status="done",
+            stage="done",
+            message="完成",
+            info={**info, "reference_index": "built", "language_entries": lang_count},
+        )
+    except Exception as exc:  # noqa: BLE001
+        _set_load_state(status="error", stage="error", message="加载失败", error=str(exc))
+
+
+@router.post("/load-async")
+def load_dat_async(body: DatLoadRequest):
+    """异步加载 dat：立即返回，后台线程解析，用 /load-status 轮询进度。"""
+    with _load_lock:
+        if _load_state["status"] == "loading":
+            raise HTTPException(409, "已有加载任务进行中")
+        _load_state.update(status="loading", stage="checking", message="检查文件…", error=None, info=None)
+    threading.Thread(target=_run_load, args=(body.path,), daemon=True).start()
+    return {"status": "loading"}
+
+
+@router.get("/load-status")
+def load_status():
+    """返回异步加载的当前进度（status / stage / message / error / info）。"""
+    return _get_load_state()
 
 
 @router.post("/load")

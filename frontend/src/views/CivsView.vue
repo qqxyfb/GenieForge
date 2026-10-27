@@ -99,25 +99,31 @@
           <div class="grid4">
             <Field
               label="Internal Name"
+              :value="detail.name"
               :modified="isFieldModified('name')"
               :original-value="getOriginalValue('name')"
               @revert="revertField('name')"
+              @commit="(v) => save('name', v)"
             >
               <FieldControl type="text" :model-value="detail.name" @commit="(v) => save('name', v)" />
             </Field>
             <Field
               label="Player Type"
+              :value="detail.player_type"
               :modified="isFieldModified('player_type')"
               :original-value="getOriginalValue('player_type')"
               @revert="revertField('player_type')"
+              @commit="(v) => save('player_type', v)"
             >
               <FieldControl type="number" :model-value="detail.player_type" @commit="(v) => save('player_type', v)" />
             </Field>
             <Field
               label="Icon Set"
+              :value="detail.icon_set"
               :modified="isFieldModified('icon_set')"
               :original-value="getOriginalValue('icon_set')"
               @revert="revertField('icon_set')"
+              @commit="(v) => save('icon_set', v)"
             >
               <FieldControl type="number" :model-value="detail.icon_set" @commit="(v) => save('icon_set', v)" />
             </Field>
@@ -125,17 +131,21 @@
           <div class="grid2">
             <Field
               label="Technology Tree"
+              :value="detail.tech_tree_id"
               :modified="isFieldModified('tech_tree_id')"
               :original-value="getOriginalValue('tech_tree_id')"
               @revert="revertField('tech_tree_id')"
+              @commit="(v) => save('tech_tree_id', v)"
             >
               <EnumSelect :preloaded="effectItems" :model-value="detail.tech_tree_id" @change="(v) => save('tech_tree_id', v)" />
             </Field>
             <Field
               label="Team Bonus"
+              :value="detail.team_bonus_id"
               :modified="isFieldModified('team_bonus_id')"
               :original-value="getOriginalValue('team_bonus_id')"
               @revert="revertField('team_bonus_id')"
+              @commit="(v) => save('team_bonus_id', v)"
             >
               <EnumSelect :preloaded="effectItems" :model-value="detail.team_bonus_id" @change="(v) => save('team_bonus_id', v)" />
             </Field>
@@ -527,23 +537,6 @@ onMounted(async () => {
   flex: 1;
   overflow-y: auto;
   padding: 14px 18px 30px;
-}
-
-.group-title {
-  color: #e6a84a;
-  font-weight: 700;
-  font-size: 12px;
-  letter-spacing: 0.06em;
-  text-transform: uppercase;
-  border-left: 3px solid var(--gold);
-  background: linear-gradient(90deg, rgba(224, 164, 58, 0.12), rgba(224, 164, 58, 0));
-  padding: 5px 10px;
-  margin: 18px 0 10px;
-  border-radius: 2px;
-}
-
-.group-title:first-child {
-  margin-top: 0;
 }
 
 .grid4 {

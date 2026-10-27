@@ -43,14 +43,23 @@
       </div>
     </div>
 
-    <!-- 并排对比主体（组件） -->
-    <EntityCompare
-      ref="ecRef"
-      :table="table"
-      :entity-id="entityId"
-      :civ="civ"
-      :only-diff="onlyDiff"
-    />
+    <!-- 并排对比主体：左对比 + 右关联面板 -->
+    <div class="cmp-body">
+      <EntityCompare
+        ref="ecRef"
+        :table="table"
+        :entity-id="entityId"
+        :civ="civ"
+        :only-diff="onlyDiff"
+      />
+      <RelationPanel
+        :table="relTable"
+        :entity-id="entityId"
+        :hide-forward="table === 'civs'"
+        :hide-reverse-tables="table === 'units' ? ['civs'] : undefined"
+        hide-changes
+      />
+    </div>
 
     <!-- 全部应用：页面内确认 -->
     <el-dialog v-model="confirmAllVisible" title="全部应用" width="380px">
@@ -73,6 +82,7 @@ import { ElMessage } from 'element-plus'
 import { useCompare, versionLabel } from '../composables/useCompare'
 import { TABLE_LABELS, TABLE_ROUTES, isTableKey } from '../compare/fields'
 import EntityCompare from '../components/EntityCompare.vue'
+import RelationPanel from '../components/RelationPanel.vue'
 
 const route = useRoute()
 const router = useRouter()
@@ -85,6 +95,8 @@ const table = computed(() => {
 const entityId = computed(() => Number(route.params.id))
 const civ = computed(() => Number(route.query.civ ?? 0))
 const tableLabel = computed(() => TABLE_LABELS[table.value])
+// 关联面板：后端引用索引用 unit_headers 表示单位表，这里做映射
+const relTable = computed(() => (table.value === 'units' ? 'unit_headers' : table.value))
 
 const onlyDiff = ref(false)
 const applying = ref(false)
@@ -150,6 +162,21 @@ onMounted(() => {
   border-bottom: 1px solid var(--line);
   background: #181b20;
   flex-shrink: 0;
+}
+.cmp-body {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  overflow: hidden;
+}
+.cmp-body > :deep(.ec) {
+  flex: 1;
+  min-width: 0;
+}
+.cmp-body > :deep(.side-panel) {
+  flex: 0 0 260px;
+  width: 260px;
+  border-left: 1px solid var(--line);
 }
 .link {
   font: inherit;

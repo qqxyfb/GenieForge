@@ -34,6 +34,12 @@ export const api = {
   datInfo: () => request('/api/dat/info'),
   loadDat: (path: string) =>
     request('/api/dat/load', { method: 'POST', body: JSON.stringify({ path }) }),
+  loadDatAsync: (path: string) =>
+    request('/api/dat/load-async', { method: 'POST', body: JSON.stringify({ path }) }),
+  datLoadStatus: () =>
+    request<{ status: string; stage: string; message: string; error: string | null; info: any }>(
+      '/api/dat/load-status'
+    ),
   saveDat: (path?: string) =>
     request('/api/dat/save', { method: 'POST', body: JSON.stringify({ path }) }),
   datReloadLanguage: () => request('/api/dat/reload-language', { method: 'POST' }),

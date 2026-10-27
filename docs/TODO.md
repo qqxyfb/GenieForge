@@ -1,155 +1,89 @@
 # GenieForge 待办事项（TODO）
 
-> 最后更新：2026-10-07
-> 记录已识别但尚未完成的功能点与缺陷。优先级：P0 严重 / P1 重要 / P2 一般 / P3 低。
-> 已完成项保留原描述并标注 ✅（含实现方式），留作设计记录。
+> 最后更新：2026-10-26
+> 优先级：P0 严重 / P1 重要 / P2 一般 / P3 低。
+> 结构：先列**未完成项**（重点），再归档**已完成项**（保留实现方式，作设计记录）。
 
 ---
 
-## P0 —— 严重问题
+## 未完成项
 
-### 1. ✅ 数据页面对比已重做为「并排同布局只读页」（2026-10-05）
-- **实现**：新增 `frontend/src/components/EntityCompare.vue`，按 schema 把同一份字段表单/子表渲染两遍（左=当前 dat 可编辑、右=对比版本只读），逐字段对齐；差异字段金底高亮，子表行级 新增蓝/删除红/修改金，每处差异带「应用」，支持「全部应用」。
-- 四个数据页（科技/单位/文明/效果）均已接入，原字段列表式 DiffDrawer 已删除。
-- 对比目标支持**选版本**（版本下拉）或**选文件**（FilePicker），模块级共享，四页共用同一目标 dat。
-- 遗留：左列子表在对比弹窗内为只读展示（标量字段可编辑）；改动转为补丁、右侧关联面板未做（见改版稿①）。
+### C. 【P2】单位页搜索维度补齐到 AGE 完整 80+（暂缓）
 
-### 2. ✅ 对比数据页（DiffView 工具页）缺陷已修复（2026-10-05）
-- added/removed 行的展开框此前为空白：后端 `diff.py` 现为新增/删除记录附带 `record` 字段详情，前端三种变化都渲染展开内容。
-- 变更值不再裸 `JSON.stringify`：新增 `fmtVal` 可读格式化（对象展开为 k=v、数组分号连接），旧值红 / 新值绿。
-
-### 3. ✅ 对比功能与「版本」融合（2026-10-08）
-- 对比目标可从「版本列表」选择（`POST /api/diff/target/load` 接受 `version_id`），不再必须手选文件路径。
-- 版本记录新增 `project` 字段：`VersionStore.snapshot` 接受 project，`list` 支持按项目过滤并返回去重项目列表；导入/保存 dat 均可挂到项目下；版本页加项目筛选下拉 + 导入时指定项目。
-
-### 4. ✅ 条件搜索已推广到所有数据页面（2026-10-05）
-- 后端：`GET /api/techs`、`GET /api/units` 新增 `field`/`value` 等值过滤（白名单维度）；`GET /api/effects` 补上此前缺失的 `q` 搜索与 `min_cmds`/`max_cmds` 命令数过滤；文明页客户端过滤。
-- 前端：科技（类型/文明/效果/图标）、单位（Class/Type/HP/视野/驻军/速度/图标，原维度下拉保留为显示标记）、效果（命令数区间）、文明（玩家类型/图标集/科技树/团队加成）。
+- **现状**：`UnitsView.vue` 的 `UNIT_DIMS` 已落地 **37 个**维度（AGE 式）。
+- **待做**：AGE 完整 80+ 维度中剩余约 **40+ 个**未覆盖。
+- **出处**：`design/优化设计方案.md` §10.3。
+- **备注**：按用户要求本轮暂不实现，留待后续。
 
 ---
 
-## 改版稿剩余项（`GenieForge 界面改版.html`）
+## 已完成项归档（设计记录）
 
-已全部完成（2026-10-06/07，上游 PR #3-#7）：
-- 顶栏常驻 dat 状态 + 保存 / 撤销 / 重做（Ctrl+S / Ctrl+Z）；全局搜索（Ctrl+K，名称跨表 + #ID 直达）。
-- 修改可见、可还原：字段级原值高亮、列表圆点、本次修改记录侧栏（PR #5）。
-- 关联面板：refs/forward、refs/reverse 接入右侧栏（PR #4）。
-- 改动转为补丁：本次修改记录直接生成补丁步骤（PR #5）。
-- 并排对比与版本页重做、版本快照持久化（PR #6）。
-- 补丁冲突就地解决：候选勾选、签名推荐相似条目、补丁列表带状态（PR #7）。
+> 以下均已落地，保留实现方式作追溯。括号内为原 TODO 编号。
 
----
+### 本次实现（2026-10-26）
 
-## 用户新反馈（2026-10-07，验收 v0.3.0 界面改版后）
+1. ✅ 对比弹窗 / 数据页右侧关联面板（A，P0，改版稿① 遗留）
+   - `RelationPanel` 新增 `hideChanges` prop（对比页隐藏「本次修改」，聚焦引用关系）；
+   - `CompareView` 改为「左 `EntityCompare` + 右 `RelationPanel`」两栏，`relTable` 把 `units` 映射为 `unit_headers`（后端引用索引用 `unit_headers`），文明页 `hide-forward`、单位页 `hide-reverse-tables=['civs']` 与数据页保持一致；
+   - `DiffView` 差异详情子弹窗同样内嵌关联面板，并修复单位表表名映射（`ecTable` 把 `unit_headers` → `units` 供 `EntityCompare` 使用）。
+2. ✅ dat 加载提速（B，P2，异步 + 分阶段进度）
+   - `dat_core.load` 新增可选 `progress` 回调（checking / parsing / indexing / done）；
+   - `api/dat.py` 新增 `POST /api/dat/load-async`（后台线程解析，立即返回）与 `GET /api/dat/load-status`（轮询进度，status/stage/message/error/info）；
+   - `HomeView` 改用异步加载 + 轮询，按钮实时显示阶段文案（如「解析 dat（约 10-20 秒）…」）。原同步 `POST /api/dat/load` 保留，向后兼容。
+3. ✅ 字段级复制粘贴逐字段全覆盖（D，P2）
+   - 科技页补齐 Effect / Full Tech Mode / Icon / 语言 4 项 / 前置科技 / 费用等字段的 `:value` + `@commit`；
+   - 单位页补齐全部 30 个字段（基础/统计/战斗/费用/存储/图形/属性/碰撞/轮廓/障碍，含 Standing/碰撞/轮廓 的拼接值与自定义 commit）；
+   - 文明页补齐 5 个标量字段；效果页补齐 Effect Name 与命令参数（`saveCmd`）。
+4. ✅ UnitHeaders 主单位级元数据（E，P3）
+   - 核实已通过 `unit_index.py`（从 `Civ.units` 提取主单位定义，优先 Gaia）+ `api/units.py` `GET /api/units/{unit_id}` 实现，无需改动 `UnitHeaders` 解析；本轮仅确认并归档。
+5. ✅ AGE 视觉迭代（F，P3）
+   - 把重复定义于科技/单位/文明/效果四页的 `.group-title` 样式统一提升到 `theme.css` 全局，消除四处重复，保持金色强调视觉一致。
 
-### 10. ✅ 文明页「文明资源」值列显示 `[object Object]`（已修复 2026-10-08）
-- **修复**：前端 `filteredResources` 此前把后端返回的 `{index,value,name}` 对象数组误当纯数组再 map，导致 value 取到对象；改为直接使用对象数组，`setDetail`/baseline 同步适配对象 `.value` 字段。
+### 数据与对比
 
-### 11. ✅ 关联面板去除噪音引用（已修复 2026-10-08）
-- **修复**：`RelationPanel` 新增 `hideForward` / `hideReverseTables` 两个 prop；文明页传 `hide-forward` 隐藏「引用了」面板，单位页传 `:hide-reverse-tables="['civs']"` 过滤「关联文明」条目。
+1. ✅ 数据页对比重做为「并排同布局只读页」（2026-10-05，#1）
+   - 新增 `EntityCompare.vue`，按 schema 把同一份字段表单/子表渲染两遍（左=当前可编辑、右=对比只读），逐字段对齐；差异金底高亮，子表行级 新增蓝/删除红/修改金，每处差异带「应用」+「全部应用」；四页接入；对比目标支持选版本/选文件，模块级共享。
+2. ✅ 对比数据页（DiffView）缺陷修复（2026-10-05，#2）
+   - added/removed 展开框空白修复（`diff.py` 附 `record` 详情）；`fmtVal` 可读格式化（旧值红 / 新值绿）。
+3. ✅ 对比功能与「版本」融合（2026-10-08，#3）
+   - `POST /api/diff/target/load` 接受 `version_id`；版本记录加 `project` 字段 + 项目筛选。
+4. ✅ 对比页（DiffView 工具页）重构（2026-10-08，#20）
+   - 基准固定当前 dat（`diff_current`）；目标选版本为主（`against-version`，选文件作高级折叠）；记录带 id；「跳转」+「详情」子弹窗（iframe 内嵌并排对比、可应用）；展开内容中文 + 枚举名。方案见 `对比页重构方案.md`。
+5. ✅ 变更记录卡片自适应高度 + 分页（2026-10-08，#24）
+6. ✅ 对比页变更记录：多选应用 + 筛选（2026-10-10，#23）
+   - 后端 `_apply_one` 复用 + `POST /api/diff/apply-records`；前端 selection 列 + 批量应用 + 表类别/变化类型/名称筛选。
+7. ✅ 对比子表数据带含义（枚举名）（#17）
+   - `compare/fields.ts` 的 ListColumn 加 `meta`；攻击/护甲 class_、费用 type、资源存储 type 标记枚举，数字显示为「数字 名称」。
 
-### 12. ✅ 所有数据页分页支持调整每页数量（已修复 2026-10-08）
-- **修复**：科技/单位/效果页 `pageSize` 改为 `ref`，分页栏加 sizes 下拉（20/50/100/200/500）与 `size-change` 回第 1 页重拉。
+### 搜索与列表
 
-### 13. ✅ 效果页命令级复制粘贴与更灵活的命令卡片（已修复 2026-10-08）
-- **修复**：命令级剪贴板（模块级，跨效果共享）+ 多选复选框；命令卡片加上移/下移/插入/折叠展开/复制；工具栏支持复制选中/删除选中/粘贴。
+8. ✅ 条件搜索推广到所有数据页（2026-10-05，#4）
+9. ✅ 单位页搜索维度 7 → 37 维（2026-10-08，#5）
+   - 后端 `_FILTER_FIELDS` 白名单扩展、`list_units` 动态返回维度值；前端 `UNIT_DIMS` 统一定义，dim1/dim2 显示标记、filterDims 条件搜索共用。
+10. ✅ 引用维度搜索（2026-10-08，#15）— `GET /api/search/by-ref`（ref_index 查 forward/reverse）。
+11. ✅ 数据页 / 对比变更记录列表定制列（2026-10-10，#22）— `useListColumns` + `ColumnPicker` + localStorage 持久化。
+12. ✅ 分页支持调整每页数量（2026-10-08，#12）— 20/50/100/200/500。
+13. ✅ 分页固定一行 + 列表/详情栏拖拽调宽（2026-10-08，#21）— `usePanelResize`（250~520px）。
 
-### 14. ✅ 详情页字体对比度与区块划分（已修复 2026-10-08）
-- **修复**：字段标签颜色更淡（`#7d8590`）；分组标题改为金色强调（`#e6a84a` + 金色左边框 + 渐变背景），区块划分更清晰。
+### 编辑与操作
 
----
+14. ✅ 效果页命令级复制粘贴 + 灵活命令卡片（2026-10-08，#13）
+15. ✅ 效果页全选/拖动（#18）— 全选/取消全选 + HTML5 draggable 拖动排序。
+16. ✅ 字段值复制粘贴（2026-10-08，#7）— `useFieldClipboard` + `Field` 组件「复制值/粘贴值」。
+17. ✅ 返回键适配（#19）— 鼠标侧键（3 后退 / 4 前进）+ Ctrl+Alt+←/→。
 
-## P1 —— 重要
+### 界面与版本
 
-### 5. ✅ 其余搜索维度补全（2026-10-08）
-- 单位页搜索维度从 7 个扩展到 **37 个**（AGE 式：Type/ID/Copy ID/Base ID/HP/LoS/驻军/速度/图标/语言字段/启用禁用/交互模式/战斗等级/迷雾/小地图/资源容量衰减/爆炸防御/特质/文明/地形限制/碰撞 XYZ/轮廓/障碍/选择效果等）。
-- 后端 `_FILTER_FIELDS` 白名单扩展（仅单位对象直接标量属性），list_units 动态返回全部维度值；前端 `UNIT_DIMS` 统一维度定义（key+label+AGE 标记），dim1/dim2 显示标记、filterDims 条件搜索共用。
+18. ✅ 改版稿剩余项（2026-10-06/07，PR #3-#7）
+   - 顶栏常驻 dat 状态 + 保存/撤销/重做（Ctrl+S/Z）；全局搜索（Ctrl+K）；修改可见可还原；关联面板（refs forward/reverse）接入右侧栏；改动转补丁；并排对比与版本页重做；补丁冲突就地解决。
+19. ✅ 版本为主：版本导出 / 从版本加载（2026-10-08，#16）— `POST /api/version/export` + 桌面壳 `save_file_dialog` + HomeView 入口。
+20. ✅ 文明页「文明资源」`[object Object]` 修复（2026-10-08，#10）
+21. ✅ 关联面板去噪（2026-10-08，#11）— `hideForward` / `hideReverseTables`。
+22. ✅ 详情页字体对比度与区块划分（2026-10-08，#14）
 
----
+### 打包与性能
 
-## P2 —— 一般
-
-### 6. ✅ dat 加载速度优化（部分完成 2026-10-08）
-- **已做**：后端同文件复用（同路径 + sha256 未变跳过 parse，避免重复 10s+ 解析）；
-  前端加载按钮提示「约需 10-20 秒」+ 显示实际耗时。
-- **根因**：genieutils（C++ 库）`DatFile.parse` 实测 12.83s（占 99%），索引构建仅 0.07s，
-  无法从应用层优化；pickle 缓存也不划算（dump 11.5s / 346MB）。
-- **遗留**：真正提速需换解析库或异步加载 + 分阶段进度，收益有限。
-
-### 7. ✅ 复制粘贴补充（字段值复制粘贴 2026-10-08）
-- `useFieldClipboard` 全局字段值剪贴板 + `Field` 组件「复制值/粘贴值」按钮（`value` prop + `commit` emit）。
-- 科技页基础信息字段已接入示范；其余字段/页面可逐步加 `:value` + `@commit`。
-
----
-
-## P3 —— 低
-
-### 8. ✅ 打包脚本清理逻辑加固（2026-10-08）
-- `_clean_dir` 改为优先 `shutil.rmtree`，失败走 PowerShell（timeout 30s），再失败不阻断打包。
-
-### 9. ✅ 数据页面布局/配色细节打磨（2026-10-08）
-- 数字字段右对齐 + 等宽字体（AGE 数值风格）；此前已做字段标签淡色、分组标题金色强调。
-- 后续可继续按 AGE 视觉迭代。
-
----
-
-## 新反馈（2026-10-08）
-
-### 15. ✅ 引用维度搜索
-- 后端 `GET /api/search/by-ref`（table/direction/ref_table/ref_id，用 ref_index 查 forward/reverse）；
-  科技页搜索区加「引用筛选」下拉（引用了效果/科技/单位、被科技/文明引用）+ 目标 ID，按命中 id 过滤列表。
-
-### 16. ✅ 版本为主（高优先级）
-- 版本导出 `POST /api/version/export`（快照复制为 dat）；桌面壳加 `save_file_dialog`；
-  版本页加「导出」按钮；HomeView 加「从版本加载」入口（选版本 checkout，保留文件加载作为导入）。
-
-### 17. ✅ 对比子表数据带含义（低优先级）
-- `compare/fields.ts` 的 ListColumn 加 `meta`（枚举名）；攻击/护甲 class_、费用 type、资源存储 type 标记枚举；
-  CompareView 预加载枚举、cells 把数字显示为「数字 名称」。
-
-### 18. ✅ 效果页全选/拖动（低优先级）
-- 命令工具栏加「全选/取消全选」；命令卡片加拖动排序（HTML5 draggable + 拖动手柄）。
-
-### 19. ✅ 返回键适配（低优先级）
-- App.vue 监听鼠标侧键（button 3 后退 / 4 前进）+ 键盘 Ctrl+Alt+←/→ 前进后退。
-
-### 20. ✅ 对比页（DiffView 工具页）重构（2026-10-08）
-- **问题**：工具→对比仍只支持选基准+目标 dat；对比形式差；变更记录无 id；无跳转/详情应用；展开内容不可读。
-- **实现**：
-  1. 基准固定当前 dat：`core/diff.py` 抽 `_diff_objects` + 新增 `diff_current`（基准用内存 `dat_core.get()`，不重复 parse）；
-  2. 目标选版本为主：`POST /api/diff/against-version`（选文件作高级选项折叠）；
-  3. 变更记录带 id（added/removed 补 `id`，modified 保留 `id_a`/`id_b`）；
-  4. 每条记录「跳转」到数据页定位 + 「详情」子弹窗（el-dialog + iframe 内嵌 `/compare/:table/:id` 并排对比画面，可应用）；
-  5. 展开内容字段中文（复用 `compare/fields.ts` FIELDS 映射）+ 值可读化。
-- 方案详见 [`对比页重构方案.md`](对比页重构方案.md)。
-
-### 21. ✅ 分页固定一行 + 列表栏/详情栏拖拽调宽（2026-10-08）
-- 分页栏 `flex-wrap` 改 `nowrap`（固定一行不换行）；新增 `usePanelResize`（列表栏/关联面板栏拖拽分隔条，
-  最小 250px、最大 520px，会话内保持），四个数据页接入。
-- **修复（2026-10-08）**：最小宽度从 200 提到 250，容纳分页栏（sizes 84px + prev/pager/next），避免拖拽时分页溢出边界；`theme.css` 加 `.list-foot { overflow-x: hidden }`。
-
----
-
-## 待办（2026-10-08 新反馈）
-
-### 24. ✅ 变更记录卡片自适应高度 + 变更记录分页（2026-10-08）
-- **问题**：变更记录卡片固定高度（`max-height=520`），最大化时下方大片空白。
-- **修复**：`DiffView.vue` 卡片改 `records-card`（flex 列、`flex:1` 自适应剩余高度），`el-table` 外层包 `records-body`（`flex:1` + `min-height:0`）用 `height=100%` 填充；`records-foot` 分页栏固定底部。
-- **分页**：变更记录新增 `recPage`/`recPageSize`/`paginatedRecords`，默认每页 50，支持 20/50/100/200；`records` 变化时 watch 回第 1 页。
-
-### 22. ✅ 数据页 / 对比变更记录列表支持定制列（2026-10-10）
-- **需求**：单位页等列表可定制展示「类型、类别、ID」等搜索维度相关列，便于直观看到实体属性。
-- **实现**：
-  - 新增 `composables/useListColumns.ts`（module 级单例按表名缓存，勾选状态 + 顺序持久化到 localStorage `genieforge.columns.<table>`）；
-  - 新增 `components/ColumnPicker.vue`（「列」按钮弹层：勾选 / 上移下移排序 / 重置）；
-  - 四个数据页（科技/单位/文明/效果）列表搜索栏加「列」按钮，el-table 按勾选顺序动态渲染列（等宽字体右对齐、布尔转「是/否」）。
-  - 单位页复用 37 个搜索维度作为可选列；科技页 type/civ/effect_id/icon_id；文明页 player_type/icon_set/tech_tree_id/team_bonus_id；效果页命令数。
-
-### 23. ✅ 对比页变更记录：多选应用 + 筛选（2026-10-10）
-- **需求**：
-  1. 变更记录支持多选（复选框 + shift 范围选择）批量应用；
-  2. 增加筛选：按表类别、变化类型、名称过滤。
-- **实现**：
-  - 后端 `diff.py` 抽 `_apply_one` 复用单条逻辑，新增 `POST /api/diff/apply-records`（批量应用，逐条复用 added/removed 覆盖、modified 逐字段）；
-  - 前端 `DiffView.vue`：变更记录表加 selection 列 + 「批量应用」按钮（有勾选时显示）；header 加表类别/变化类型/名称三个筛选控件；分页基于筛选后结果。
-  - 表名别名：diff 记录里单位表名为 `unit_headers`，显示映射为「单位」。
+23. ✅ 打包脚本清理逻辑加固（2026-10-08，#8）— `_clean_dir` 优先 shutil.rmtree、失败走 PowerShell。
+24. ✅ 数据页布局/配色打磨（2026-10-08，#9）— 数字右对齐 + 等宽字体。
+25. ✅ dat 加载部分优化（2026-10-08，#6）— 同文件复用 + 耗时提示（彻底提速见未完成项 B）。

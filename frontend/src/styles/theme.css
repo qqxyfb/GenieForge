@@ -80,6 +80,24 @@ body,
   font-variant-numeric: tabular-nums;
 }
 
+/* 分组标题：金色强调 + 左边框 + 渐变背景（AGE 视觉，四页共用） */
+.group-title {
+  color: #e6a84a;
+  font-weight: 700;
+  font-size: 12px;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  border-left: 3px solid var(--gold);
+  background: linear-gradient(90deg, rgba(224, 164, 58, 0.12), rgba(224, 164, 58, 0));
+  padding: 5px 10px;
+  margin: 18px 0 10px;
+  border-radius: 2px;
+}
+
+.group-title:first-child {
+  margin-top: 0;
+}
+
 /* 紧凑表格，贴合 AGE 高密度风格 */
 .el-table {
   --el-table-header-bg-color: #181b20;

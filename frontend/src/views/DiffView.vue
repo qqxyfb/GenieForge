@@ -165,16 +165,24 @@
         />
       </div>
     </el-card>
-    <!-- 差异详情子弹窗：内嵌 EntityCompare，与数据页「对比…」画面一致 -->
+    <!-- 差异详情子弹窗：内嵌 EntityCompare + 右侧关联面板，与数据页「对比…」画面一致 -->
     <el-dialog v-model="detailVisible" :title="detailTitle" width="94%" top="3vh" destroy-on-close>
-      <EntityCompare
-        v-if="detailVisible && detailTable && detailId != null"
-        :table="detailTable"
-        :entity-id="detailId"
-        :base-id="detailBaseId"
-        :target-id="detailTargetId"
-        :civ="0"
-      />
+      <div v-if="detailVisible && detailTable && detailId != null" class="detail-body">
+        <EntityCompare
+          :table="ecTable"
+          :entity-id="detailId"
+          :base-id="detailBaseId"
+          :target-id="detailTargetId"
+          :civ="0"
+        />
+        <RelationPanel
+          :table="detailTable"
+          :entity-id="detailId"
+          :hide-forward="detailTable === 'civs'"
+          :hide-reverse-tables="detailTable === 'unit_headers' ? ['civs'] : undefined"
+          hide-changes
+        />
+      </div>
     </el-dialog>
   </div>
 </template>
@@ -186,6 +194,7 @@ import { ElMessage, ElMessageBox } from 'element-plus'
 import { api } from '../api/client'
 import FilePicker from '../components/FilePicker.vue'
 import EntityCompare from '../components/EntityCompare.vue'
+import RelationPanel from '../components/RelationPanel.vue'
 import { useCompare, versionLabel } from '../composables/useCompare'
 import { useDiffState } from '../composables/useDiffState'
 import { FIELDS, TABLE_LABELS, TABLE_ROUTES } from '../compare/fields'
@@ -261,6 +270,8 @@ const detailId = ref<number | null>(null)
 const detailBaseId = ref<number | null>(null)
 const detailTargetId = ref<number | null>(null)
 const detailTitle = ref('')
+// EntityCompare 需要 TableKey（单位表为 units），diff 记录里单位表名为 unit_headers，这里做映射
+const ecTable = computed(() => (detailTable.value === 'unit_headers' ? 'units' : detailTable.value))
 
 function tableLabel(t: string | number): string {
   const s = String(t)
@@ -521,4 +532,20 @@ onMounted(loadVersions)
 .new-val { color: #8ae0a8; }
 .muted { color: var(--muted); }
 .mono { font-family: var(--f-mono); }
+/* 差异详情子弹窗：左对比 + 右关联面板 */
+.detail-body {
+  display: flex;
+  height: 78vh;
+  min-height: 0;
+  overflow: hidden;
+}
+.detail-body > :deep(.ec) {
+  flex: 1;
+  min-width: 0;
+}
+.detail-body > :deep(.side-panel) {
+  flex: 0 0 260px;
+  width: 260px;
+  border-left: 1px solid var(--line);
+}
 </style>

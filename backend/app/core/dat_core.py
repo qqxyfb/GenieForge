@@ -63,16 +63,22 @@ class DatCore:
         apply()
         return DatFile.parse(str(path))
 
-    def load(self, path) -> dict:
+    def load(self, path, progress: Optional[Callable[[str, str], None]] = None) -> dict:
         p = Path(path)
+        if progress:
+            progress("checking", "检查文件…")
         # 同路径 + 文件未变化 → 复用已解析的内存对象，跳过 parse（避免重复 10s+ 解析）
         with self._lock:
             if self._dat is not None and self._path == p:
                 try:
                     if file_sha256(p) == self._source_hash:
+                        if progress:
+                            progress("done", "已复用内存中的 dat，无需重新解析")
                         return self.info()
                 except OSError:
                     pass
+        if progress:
+            progress("parsing", "解析 dat（约 10-20 秒）…")
         dat = self._parse(p)
         with self._lock:
             self._dat = dat
@@ -81,6 +87,8 @@ class DatCore:
             self._dirty = False
             self._undo_stack.clear()
             self._redo_stack.clear()
+            if progress:
+                progress("indexing", "解析完成")
             return self.info()
 
     def load_snapshot(self, snapshot_path) -> dict:

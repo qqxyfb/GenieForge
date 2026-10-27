@@ -78,7 +78,7 @@
             <FilePicker v-model="datPath" placeholder="例如：empires2_x2_p1.dat 路径" />
             <div class="op-actions">
               <button type="button" class="btn" :disabled="loading" @click="load">
-                {{ loading ? '解析中（约需 10-20 秒）…' : '加载 dat' }}
+                {{ loading ? (loadStage || '解析中（约需 10-20 秒）…') : '加载 dat' }}
               </button>
               <button type="button" class="btn" @click="checkUpdate">检查更新</button>
             </div>
@@ -102,6 +102,7 @@ const historyStore = useHistoryStore()
 const datInfo = computed(() => appStore.datInfo)
 const datPath = ref('')
 const loading = ref(false)
+const loadStage = ref('')
 const versions = ref<any[]>([])
 const loadVersion = ref<number | null>(null)
 
@@ -146,16 +147,30 @@ async function load() {
   loading.value = true
   const startedAt = Date.now()
   try {
-    const r: any = await api.loadDat(datPath.value)
-    const secs = ((Date.now() - startedAt) / 1000).toFixed(1)
-    // dat 重新加载成功后清空前端会话内记录的原值与修改历史
-    historyStore.clearAll()
-    await appStore.refreshDatInfo()
-    ElMessage.success(`已加载（用时 ${secs}s），语言表条目 ${r.language_entries ?? 0}`)
+    // 异步加载：立即返回，后台解析，轮询分阶段进度
+    await api.loadDatAsync(datPath.value)
+    for (;;) {
+      const st: any = await api.datLoadStatus()
+      loadStage.value = st.message || ''
+      if (st.status === 'done') {
+        const secs = ((Date.now() - startedAt) / 1000).toFixed(1)
+        // dat 重新加载成功后清空前端会话内记录的原值与修改历史
+        historyStore.clearAll()
+        await appStore.refreshDatInfo()
+        ElMessage.success(`已加载（用时 ${secs}s），语言表条目 ${st.info?.language_entries ?? 0}`)
+        break
+      }
+      if (st.status === 'error') {
+        ElMessage.error(st.error || '加载失败')
+        break
+      }
+      await new Promise((r) => setTimeout(r, 500))
+    }
   } catch (e: any) {
     ElMessage.error(e.message)
   } finally {
     loading.value = false
+    loadStage.value = ''
   }
 }
 async function checkUpdate() {

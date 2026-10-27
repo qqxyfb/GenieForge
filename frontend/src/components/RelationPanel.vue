@@ -50,7 +50,7 @@
       </section>
 
       <!-- 本次修改 -->
-      <section class="section changes-section">
+      <section v-if="!hideChanges" class="section changes-section">
         <h4 class="section-title">本次修改 ({{ changesList.length }})</h4>
         <div v-if="changesLoading" class="empty-hint">加载中…</div>
         <div v-else-if="changesList.length === 0" class="empty-hint">无</div>
@@ -127,6 +127,8 @@ const props = defineProps<{
   hideForward?: boolean
   /** 从「被引用」面板过滤掉的表（如单位页：去掉「关联文明」噪音） */
   hideReverseTables?: string[]
+  /** 隐藏「本次修改」面板（对比页 / 差异子弹窗聚焦引用关系，避免跳转打断对比） */
+  hideChanges?: boolean
 }>()
 
 const router = useRouter()

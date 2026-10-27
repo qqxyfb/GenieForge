@@ -130,33 +130,41 @@
           <div class="grid4">
             <Field
               label="Internal Name"
+              :value="detail.name"
               :modified="isFieldModified('name')"
               :original-value="getOriginalValue('name')"
               @revert="revertField('name')"
+              @commit="(v) => save('name', v)"
             >
               <FieldControl type="text" :model-value="detail.name" @commit="(v) => save('name', v)" />
             </Field>
             <Field
               label="Type"
+              :value="detail.type"
               :modified="isFieldModified('type')"
               :original-value="getOriginalValue('type')"
               @revert="revertField('type')"
+              @commit="(v) => save('type', v)"
             >
               <EnumSelect meta-name="unit-types" :model-value="detail.type" @change="(v) => save('type', v)" />
             </Field>
             <Field
               label="Class"
+              :value="detail.class"
               :modified="isFieldModified('class')"
               :original-value="getOriginalValue('class')"
               @revert="revertField('class')"
+              @commit="(v) => save('class', v)"
             >
               <EnumSelect meta-name="armors" :model-value="detail.class" @change="(v) => save('class', v)" />
             </Field>
             <Field
               label="ID"
+              :value="detail.id"
               :modified="isFieldModified('id')"
               :original-value="getOriginalValue('id')"
               @revert="revertField('id')"
+              @commit="(v) => save('id', v)"
             >
               <FieldControl type="number" :model-value="detail.id" @commit="(v) => save('id', v)" />
             </Field>
@@ -164,33 +172,41 @@
           <div class="grid4">
             <Field
               label="Copy ID"
+              :value="detail.copy_id"
               :modified="isFieldModified('copy_id')"
               :original-value="getOriginalValue('copy_id')"
               @revert="revertField('copy_id')"
+              @commit="(v) => save('copy_id', v)"
             >
               <FieldControl type="number" :model-value="detail.copy_id" @commit="(v) => save('copy_id', v)" />
             </Field>
             <Field
               label="Base ID"
+              :value="detail.base_id"
               :modified="isFieldModified('base_id')"
               :original-value="getOriginalValue('base_id')"
               @revert="revertField('base_id')"
+              @commit="(v) => save('base_id', v)"
             >
               <FieldControl type="number" :model-value="detail.base_id" @commit="(v) => save('base_id', v)" />
             </Field>
             <Field
               label="Trait"
+              :value="detail.trait"
               :modified="isFieldModified('trait')"
               :original-value="getOriginalValue('trait')"
               @revert="revertField('trait')"
+              @commit="(v) => save('trait', v)"
             >
               <FieldControl type="number" :model-value="detail.trait" @commit="(v) => save('trait', v)" />
             </Field>
             <Field
               label="Civilization"
+              :value="detail.civilization"
               :modified="isFieldModified('civilization')"
               :original-value="getOriginalValue('civilization')"
               @revert="revertField('civilization')"
+              @commit="(v) => save('civilization', v)"
             >
               <EnumSelect :preloaded="civItems" :model-value="detail.civilization" @change="(v) => save('civilization', v)" />
             </Field>
@@ -200,33 +216,41 @@
           <div class="grid4">
             <Field
               label="生命"
+              :value="detail.hit_points"
               :modified="isFieldModified('hit_points')"
               :original-value="getOriginalValue('hit_points')"
               @revert="revertField('hit_points')"
+              @commit="(v) => save('hit_points', v)"
             >
               <FieldControl type="number" :model-value="detail.hit_points" @commit="(v) => save('hit_points', v)" />
             </Field>
             <Field
               label="速度"
+              :value="detail.speed"
               :modified="isFieldModified('speed')"
               :original-value="getOriginalValue('speed')"
               @revert="revertField('speed')"
+              @commit="(v) => save('speed', v)"
             >
               <FieldControl type="number" :model-value="detail.speed" @commit="(v) => save('speed', v)" />
             </Field>
             <Field
               label="视野"
+              :value="detail.line_of_sight"
               :modified="isFieldModified('line_of_sight')"
               :original-value="getOriginalValue('line_of_sight')"
               @revert="revertField('line_of_sight')"
+              @commit="(v) => save('line_of_sight', v)"
             >
               <FieldControl type="number" :model-value="detail.line_of_sight" @commit="(v) => save('line_of_sight', v)" />
             </Field>
             <Field
               label="驻军容量"
+              :value="detail.garrison_capacity"
               :modified="isFieldModified('garrison_capacity')"
               :original-value="getOriginalValue('garrison_capacity')"
               @revert="revertField('garrison_capacity')"
+              @commit="(v) => save('garrison_capacity', v)"
             >
               <FieldControl type="number" :model-value="detail.garrison_capacity" @commit="(v) => save('garrison_capacity', v)" />
             </Field>
@@ -236,33 +260,41 @@
           <div class="grid4">
             <Field
               label="基础护甲"
+              :value="detail.base_armor"
               :modified="isFieldModified('type_50.base_armor')"
               :original-value="getOriginalValue('type_50.base_armor')"
               @revert="revertField('type_50.base_armor')"
+              @commit="(v) => save('type_50.base_armor', v)"
             >
               <FieldControl type="number" :model-value="detail.base_armor" @commit="(v) => save('type_50.base_armor', v)" />
             </Field>
             <Field
               label="最大射程"
+              :value="detail.max_range"
               :modified="isFieldModified('type_50.max_range')"
               :original-value="getOriginalValue('type_50.max_range')"
               @revert="revertField('type_50.max_range')"
+              @commit="(v) => save('type_50.max_range', v)"
             >
               <FieldControl type="number" :model-value="detail.max_range" @commit="(v) => save('type_50.max_range', v)" />
             </Field>
             <Field
               label="最小射程"
+              :value="detail.min_range"
               :modified="isFieldModified('type_50.min_range')"
               :original-value="getOriginalValue('type_50.min_range')"
               @revert="revertField('type_50.min_range')"
+              @commit="(v) => save('type_50.min_range', v)"
             >
               <FieldControl type="number" :model-value="detail.min_range" @commit="(v) => save('type_50.min_range', v)" />
             </Field>
             <Field
               label="装填时间"
+              :value="detail.reload_time"
               :modified="isFieldModified('type_50.reload_time')"
               :original-value="getOriginalValue('type_50.reload_time')"
               @revert="revertField('type_50.reload_time')"
+              @commit="(v) => save('type_50.reload_time', v)"
             >
               <FieldControl type="number" :model-value="detail.reload_time" @commit="(v) => save('type_50.reload_time', v)" />
             </Field>
@@ -298,9 +330,11 @@
               <EnumSelect meta-name="resource-types" :model-value="rc.type" @change="(v) => save(`creatable.resource_costs.${i}.type`, v)" />
               <Field
                 :label="`费用 ${i}`"
+                :value="rc.amount"
                 :modified="isFieldModified(`creatable.resource_costs.${i}.amount`)"
                 :original-value="getOriginalValue(`creatable.resource_costs.${i}.amount`)"
                 @revert="revertField(`creatable.resource_costs.${i}.amount`)"
+                @commit="(v) => save(`creatable.resource_costs.${i}.amount`, v)"
               >
                 <FieldControl type="number" :model-value="rc.amount" @commit="(v) => save(`creatable.resource_costs.${i}.amount`, v)" />
               </Field>
@@ -313,9 +347,11 @@
               <EnumSelect meta-name="civ-resources" :model-value="rs.type" @change="(v) => save(`resource_storages.${i}.type`, v)" />
               <Field
                 :label="`存储 ${i}`"
+                :value="rs.amount"
                 :modified="isFieldModified(`resource_storages.${i}.amount`)"
                 :original-value="getOriginalValue(`resource_storages.${i}.amount`)"
                 @revert="revertField(`resource_storages.${i}.amount`)"
+                @commit="(v) => save(`resource_storages.${i}.amount`, v)"
               >
                 <FieldControl type="number" :model-value="rs.amount" @commit="(v) => save(`resource_storages.${i}.amount`, v)" />
               </Field>
@@ -335,28 +371,38 @@
           <div class="grid4">
             <Field
               label="Icon"
+              :value="detail.icon_id"
               :modified="isFieldModified('icon_id')"
               :original-value="getOriginalValue('icon_id')"
               @revert="revertField('icon_id')"
+              @commit="(v) => save('icon_id', v)"
             >
               <FieldControl type="number" :model-value="detail.icon_id" @commit="(v) => save('icon_id', v)" />
             </Field>
             <Field
               label="Special Graphic"
+              :value="detail.special_graphic"
               :modified="isFieldModified('creatable.special_graphic')"
               :original-value="getOriginalValue('creatable.special_graphic')"
               @revert="revertField('creatable.special_graphic')"
+              @commit="(v) => save('creatable.special_graphic', v)"
             >
               <FieldControl type="number" :model-value="detail.special_graphic" @commit="(v) => save('creatable.special_graphic', v)" />
             </Field>
-            <Field label="Standing">
+            <Field
+              label="Standing"
+              :value="detail.standing_graphic?.join('/')"
+              @commit="(v) => saveStanding(v)"
+            >
               <FieldControl type="text" :model-value="detail.standing_graphic?.join('/')" @commit="(v) => saveStanding(v)" />
             </Field>
             <Field
               label="Dying"
+              :value="detail.dying_graphic"
               :modified="isFieldModified('dying_graphic')"
               :original-value="getOriginalValue('dying_graphic')"
               @revert="revertField('dying_graphic')"
+              @commit="(v) => save('dying_graphic', v)"
             >
               <FieldControl type="number" :model-value="detail.dying_graphic" @commit="(v) => save('dying_graphic', v)" />
             </Field>
@@ -380,33 +426,41 @@
           <div class="grid4">
             <Field
               label="Interaction"
+              :value="detail.interaction_mode"
               :modified="isFieldModified('interaction_mode')"
               :original-value="getOriginalValue('interaction_mode')"
               @revert="revertField('interaction_mode')"
+              @commit="(v) => save('interaction_mode', v)"
             >
               <FieldControl type="number" :model-value="detail.interaction_mode" @commit="(v) => save('interaction_mode', v)" />
             </Field>
             <Field
               label="Combat Level"
+              :value="detail.combat_level"
               :modified="isFieldModified('combat_level')"
               :original-value="getOriginalValue('combat_level')"
               @revert="revertField('combat_level')"
+              @commit="(v) => save('combat_level', v)"
             >
               <FieldControl type="number" :model-value="detail.combat_level" @commit="(v) => save('combat_level', v)" />
             </Field>
             <Field
               label="Sort Number"
+              :value="detail.sort_number"
               :modified="isFieldModified('sort_number')"
               :original-value="getOriginalValue('sort_number')"
               @revert="revertField('sort_number')"
+              @commit="(v) => save('sort_number', v)"
             >
               <FieldControl type="number" :model-value="detail.sort_number" @commit="(v) => save('sort_number', v)" />
             </Field>
             <Field
               label="Interface Kind"
+              :value="detail.interface_kind"
               :modified="isFieldModified('interface_kind')"
               :original-value="getOriginalValue('interface_kind')"
               @revert="revertField('interface_kind')"
+              @commit="(v) => save('interface_kind', v)"
             >
               <FieldControl type="number" :model-value="detail.interface_kind" @commit="(v) => save('interface_kind', v)" />
             </Field>
@@ -414,25 +468,37 @@
 
           <div class="group-title">碰撞 / 放置</div>
           <div class="grid4">
-            <Field label="碰撞 X/Y/Z">
+            <Field
+              label="碰撞 X/Y/Z"
+              :value="`${detail.collision_size_x}/${detail.collision_size_y}/${detail.collision_size_z}`"
+              @commit="(v) => saveCollision(v)"
+            >
               <FieldControl type="text" :model-value="`${detail.collision_size_x}/${detail.collision_size_y}/${detail.collision_size_z}`" @commit="(v) => saveCollision(v)" />
             </Field>
-            <Field label="轮廓 X/Y">
+            <Field
+              label="轮廓 X/Y"
+              :value="`${detail.outline_size_x}/${detail.outline_size_y}`"
+              @commit="(v) => saveOutline(v)"
+            >
               <FieldControl type="text" :model-value="`${detail.outline_size_x}/${detail.outline_size_y}`" @commit="(v) => saveOutline(v)" />
             </Field>
             <Field
               label="障碍类型"
+              :value="detail.obstruction_type"
               :modified="isFieldModified('obstruction_type')"
               :original-value="getOriginalValue('obstruction_type')"
               @revert="revertField('obstruction_type')"
+              @commit="(v) => save('obstruction_type', v)"
             >
               <FieldControl type="number" :model-value="detail.obstruction_type" @commit="(v) => save('obstruction_type', v)" />
             </Field>
             <Field
               label="障碍类别"
+              :value="detail.obstruction_class"
               :modified="isFieldModified('obstruction_class')"
               :original-value="getOriginalValue('obstruction_class')"
               @revert="revertField('obstruction_class')"
+              @commit="(v) => save('obstruction_class', v)"
             >
               <FieldControl type="number" :model-value="detail.obstruction_class" @commit="(v) => save('obstruction_class', v)" />
             </Field>
@@ -1085,23 +1151,6 @@ onMounted(async () => {
   flex: 1;
   overflow-y: auto;
   padding: 14px 18px 30px;
-}
-
-.group-title {
-  color: #e6a84a;
-  font-weight: 700;
-  font-size: 12px;
-  letter-spacing: 0.06em;
-  text-transform: uppercase;
-  border-left: 3px solid var(--gold);
-  background: linear-gradient(90deg, rgba(224, 164, 58, 0.12), rgba(224, 164, 58, 0));
-  padding: 5px 10px;
-  margin: 18px 0 10px;
-  border-radius: 2px;
-}
-
-.group-title:first-child {
-  margin-top: 0;
 }
 
 .grid4 {
